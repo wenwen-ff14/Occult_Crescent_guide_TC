@@ -1,0 +1,760 @@
+{
+  "chartId": "south-horn-68-v1",
+  "sourceUrl": "https://media.discordapp.net/attachments/1530579815076204644/1530581321917792346/9c36647eec4c9eb3.jpg",
+  "sourceImageSize": [
+    966,
+    960
+  ],
+  "credits": "Map: Spiral Lance (Coeurl); Pathing: Selene Amaris (Omega), Spiral Lance (Coeurl)",
+  "method": "Manually read all 68 numbered chest icons. Match to existing TC-verified world coordinates using 8 silver anchors. Pixel error reflects approximate positions on the supplied illustration, not game coordinate accuracy. Original catalog unchanged.",
+  "entries": [
+    {
+      "number": 1,
+      "catalogId": 9,
+      "kind": "Bronze",
+      "pixel": [
+        773,
+        149
+      ],
+      "error": 4.49,
+      "runnerUp": 76.55
+    },
+    {
+      "number": 2,
+      "catalogId": 10,
+      "kind": "Bronze",
+      "pixel": [
+        697,
+        191
+      ],
+      "error": 19.6,
+      "runnerUp": 73.11
+    },
+    {
+      "number": 3,
+      "catalogId": 14,
+      "kind": "Bronze",
+      "pixel": [
+        662,
+        252
+      ],
+      "error": 13.69,
+      "runnerUp": 74.99
+    },
+    {
+      "number": 4,
+      "catalogId": 19,
+      "kind": "Bronze",
+      "pixel": [
+        660,
+        131
+      ],
+      "error": 6.02,
+      "runnerUp": 87.33
+    },
+    {
+      "number": 5,
+      "catalogId": 21,
+      "kind": "Bronze",
+      "pixel": [
+        545,
+        195
+      ],
+      "error": 12.69,
+      "runnerUp": 129.9
+    },
+    {
+      "number": 6,
+      "catalogId": 22,
+      "kind": "Bronze",
+      "pixel": [
+        427,
+        147
+      ],
+      "error": 4.3,
+      "runnerUp": 136.22
+    },
+    {
+      "number": 7,
+      "catalogId": 24,
+      "kind": "Bronze",
+      "pixel": [
+        273,
+        119
+      ],
+      "error": 9.39,
+      "runnerUp": 84.77
+    },
+    {
+      "number": 8,
+      "catalogId": 51,
+      "kind": "Bronze",
+      "pixel": [
+        210,
+        72
+      ],
+      "error": 6.18,
+      "runnerUp": 70.08
+    },
+    {
+      "number": 9,
+      "catalogId": 52,
+      "kind": "Bronze",
+      "pixel": [
+        135,
+        134
+      ],
+      "error": 1.93,
+      "runnerUp": 66.51
+    },
+    {
+      "number": 10,
+      "catalogId": 6,
+      "kind": "Silver",
+      "pixel": [
+        95,
+        85
+      ],
+      "error": 3.9,
+      "runnerUp": 65.09
+    },
+    {
+      "number": 11,
+      "catalogId": 54,
+      "kind": "Bronze",
+      "pixel": [
+        67,
+        161
+      ],
+      "error": 6.73,
+      "runnerUp": 74.32
+    },
+    {
+      "number": 12,
+      "catalogId": 53,
+      "kind": "Bronze",
+      "pixel": [
+        170,
+        211
+      ],
+      "error": 6.96,
+      "runnerUp": 81.45
+    },
+    {
+      "number": 13,
+      "catalogId": 23,
+      "kind": "Bronze",
+      "pixel": [
+        258,
+        233
+      ],
+      "error": 9.77,
+      "runnerUp": 89.7
+    },
+    {
+      "number": 14,
+      "catalogId": 20,
+      "kind": "Bronze",
+      "pixel": [
+        408,
+        284
+      ],
+      "error": 7.95,
+      "runnerUp": 89.35
+    },
+    {
+      "number": 15,
+      "catalogId": 68,
+      "kind": "Bronze",
+      "pixel": [
+        309,
+        293
+      ],
+      "error": 11.88,
+      "runnerUp": 88.08
+    },
+    {
+      "number": 16,
+      "catalogId": 26,
+      "kind": "Bronze",
+      "pixel": [
+        496,
+        347
+      ],
+      "error": 13.51,
+      "runnerUp": 102.71
+    },
+    {
+      "number": 17,
+      "catalogId": 13,
+      "kind": "Bronze",
+      "pixel": [
+        648,
+        343
+      ],
+      "error": 2.4,
+      "runnerUp": 79.91
+    },
+    {
+      "number": 18,
+      "catalogId": 11,
+      "kind": "Bronze",
+      "pixel": [
+        796,
+        251
+      ],
+      "error": 2.46,
+      "runnerUp": 96.37
+    },
+    {
+      "number": 19,
+      "catalogId": 12,
+      "kind": "Bronze",
+      "pixel": [
+        899,
+        301
+      ],
+      "error": 7,
+      "runnerUp": 73.98
+    },
+    {
+      "number": 20,
+      "catalogId": 15,
+      "kind": "Bronze",
+      "pixel": [
+        853,
+        361
+      ],
+      "error": 3.3,
+      "runnerUp": 50.82
+    },
+    {
+      "number": 21,
+      "catalogId": 16,
+      "kind": "Bronze",
+      "pixel": [
+        702,
+        441
+      ],
+      "error": 6.51,
+      "runnerUp": 107.44
+    },
+    {
+      "number": 22,
+      "catalogId": 17,
+      "kind": "Bronze",
+      "pixel": [
+        772,
+        533
+      ],
+      "error": 2.71,
+      "runnerUp": 73.82
+    },
+    {
+      "number": 23,
+      "catalogId": 18,
+      "kind": "Bronze",
+      "pixel": [
+        827,
+        449
+      ],
+      "error": 1.47,
+      "runnerUp": 42.85
+    },
+    {
+      "number": 24,
+      "catalogId": 1,
+      "kind": "Silver",
+      "pixel": [
+        848,
+        414
+      ],
+      "error": 2.44,
+      "runnerUp": 39.71
+    },
+    {
+      "number": 25,
+      "catalogId": 48,
+      "kind": "Bronze",
+      "pixel": [
+        865,
+        539
+      ],
+      "error": 11.12,
+      "runnerUp": 93.6
+    },
+    {
+      "number": 26,
+      "catalogId": 49,
+      "kind": "Bronze",
+      "pixel": [
+        865,
+        683
+      ],
+      "error": 10.13,
+      "runnerUp": 78.25
+    },
+    {
+      "number": 27,
+      "catalogId": 50,
+      "kind": "Bronze",
+      "pixel": [
+        891,
+        758
+      ],
+      "error": 3.91,
+      "runnerUp": 55.92
+    },
+    {
+      "number": 28,
+      "catalogId": 65,
+      "kind": "Bronze",
+      "pixel": [
+        877,
+        817
+      ],
+      "error": 4.73,
+      "runnerUp": 63.11
+    },
+    {
+      "number": 29,
+      "catalogId": 4,
+      "kind": "Silver",
+      "pixel": [
+        813,
+        765
+      ],
+      "error": 0.68,
+      "runnerUp": 49.05
+    },
+    {
+      "number": 30,
+      "catalogId": 42,
+      "kind": "Bronze",
+      "pixel": [
+        762,
+        782
+      ],
+      "error": 6.69,
+      "runnerUp": 54.01
+    },
+    {
+      "number": 31,
+      "catalogId": 41,
+      "kind": "Bronze",
+      "pixel": [
+        686,
+        792
+      ],
+      "error": 13.21,
+      "runnerUp": 63.18
+    },
+    {
+      "number": 32,
+      "catalogId": 37,
+      "kind": "Bronze",
+      "pixel": [
+        615,
+        777
+      ],
+      "error": 10.4,
+      "runnerUp": 63.87
+    },
+    {
+      "number": 33,
+      "catalogId": 38,
+      "kind": "Bronze",
+      "pixel": [
+        543,
+        845
+      ],
+      "error": 6.5,
+      "runnerUp": 71.29
+    },
+    {
+      "number": 34,
+      "catalogId": 47,
+      "kind": "Bronze",
+      "pixel": [
+        379,
+        866
+      ],
+      "error": 4.53,
+      "runnerUp": 92.5
+    },
+    {
+      "number": 35,
+      "catalogId": 43,
+      "kind": "Bronze",
+      "pixel": [
+        405,
+        764
+      ],
+      "error": 18.92,
+      "runnerUp": 97.54
+    },
+    {
+      "number": 36,
+      "catalogId": 36,
+      "kind": "Bronze",
+      "pixel": [
+        503,
+        782
+      ],
+      "error": 7.54,
+      "runnerUp": 79.52
+    },
+    {
+      "number": 37,
+      "catalogId": 35,
+      "kind": "Bronze",
+      "pixel": [
+        604,
+        720
+      ],
+      "error": 5.9,
+      "runnerUp": 66.98
+    },
+    {
+      "number": 38,
+      "catalogId": 40,
+      "kind": "Bronze",
+      "pixel": [
+        717,
+        730
+      ],
+      "error": 11.34,
+      "runnerUp": 66.75
+    },
+    {
+      "number": 39,
+      "catalogId": 39,
+      "kind": "Bronze",
+      "pixel": [
+        809,
+        667
+      ],
+      "error": 22.78,
+      "runnerUp": 68.32
+    },
+    {
+      "number": 40,
+      "catalogId": 5,
+      "kind": "Silver",
+      "pixel": [
+        728,
+        592
+      ],
+      "error": 0.22,
+      "runnerUp": 71.16
+    },
+    {
+      "number": 41,
+      "catalogId": 28,
+      "kind": "Bronze",
+      "pixel": [
+        612,
+        586
+      ],
+      "error": 9.2,
+      "runnerUp": 115.54
+    },
+    {
+      "number": 42,
+      "catalogId": 66,
+      "kind": "Bronze",
+      "pixel": [
+        485,
+        686
+      ],
+      "error": 3.45,
+      "runnerUp": 103.62
+    },
+    {
+      "number": 43,
+      "catalogId": 2,
+      "kind": "Silver",
+      "pixel": [
+        349,
+        657
+      ],
+      "error": 2.52,
+      "runnerUp": 60.03
+    },
+    {
+      "number": 44,
+      "catalogId": 44,
+      "kind": "Bronze",
+      "pixel": [
+        300,
+        739
+      ],
+      "error": 10.04,
+      "runnerUp": 87.76
+    },
+    {
+      "number": 45,
+      "catalogId": 59,
+      "kind": "Bronze",
+      "pixel": [
+        230,
+        773
+      ],
+      "error": 10.01,
+      "runnerUp": 69.19
+    },
+    {
+      "number": 46,
+      "catalogId": 62,
+      "kind": "Bronze",
+      "pixel": [
+        210,
+        862
+      ],
+      "error": 12.14,
+      "runnerUp": 55.61
+    },
+    {
+      "number": 47,
+      "catalogId": 64,
+      "kind": "Bronze",
+      "pixel": [
+        142,
+        860
+      ],
+      "error": 2.38,
+      "runnerUp": 54.47
+    },
+    {
+      "number": 48,
+      "catalogId": 63,
+      "kind": "Bronze",
+      "pixel": [
+        169,
+        789
+      ],
+      "error": 8.49,
+      "runnerUp": 29.65
+    },
+    {
+      "number": 49,
+      "catalogId": 8,
+      "kind": "Silver",
+      "pixel": [
+        170,
+        819
+      ],
+      "error": 6.48,
+      "runnerUp": 35.43
+    },
+    {
+      "number": 50,
+      "catalogId": 61,
+      "kind": "Bronze",
+      "pixel": [
+        104,
+        814
+      ],
+      "error": 6.52,
+      "runnerUp": 58.62
+    },
+    {
+      "number": 51,
+      "catalogId": 60,
+      "kind": "Bronze",
+      "pixel": [
+        129,
+        746
+      ],
+      "error": 7.64,
+      "runnerUp": 50.59
+    },
+    {
+      "number": 52,
+      "catalogId": 46,
+      "kind": "Bronze",
+      "pixel": [
+        175,
+        670
+      ],
+      "error": 2.07,
+      "runnerUp": 85.9
+    },
+    {
+      "number": 53,
+      "catalogId": 45,
+      "kind": "Bronze",
+      "pixel": [
+        273,
+        621
+      ],
+      "error": 25.57,
+      "runnerUp": 61.81
+    },
+    {
+      "number": 54,
+      "catalogId": 67,
+      "kind": "Bronze",
+      "pixel": [
+        358,
+        542
+      ],
+      "error": 3.76,
+      "runnerUp": 66.29
+    },
+    {
+      "number": 55,
+      "catalogId": 27,
+      "kind": "Bronze",
+      "pixel": [
+        476,
+        551
+      ],
+      "error": 5.74,
+      "runnerUp": 115.91
+    },
+    {
+      "number": 56,
+      "catalogId": 25,
+      "kind": "Bronze",
+      "pixel": [
+        607,
+        471
+      ],
+      "error": 8.11,
+      "runnerUp": 106.11
+    },
+    {
+      "number": 57,
+      "catalogId": 30,
+      "kind": "Bronze",
+      "pixel": [
+        399,
+        427
+      ],
+      "error": 13.18,
+      "runnerUp": 118.72
+    },
+    {
+      "number": 58,
+      "catalogId": 29,
+      "kind": "Bronze",
+      "pixel": [
+        252,
+        396
+      ],
+      "error": 13.91,
+      "runnerUp": 93.68
+    },
+    {
+      "number": 59,
+      "catalogId": 31,
+      "kind": "Bronze",
+      "pixel": [
+        268,
+        488
+      ],
+      "error": 5.83,
+      "runnerUp": 80.1
+    },
+    {
+      "number": 60,
+      "catalogId": 32,
+      "kind": "Bronze",
+      "pixel": [
+        281,
+        572
+      ],
+      "error": 16.67,
+      "runnerUp": 66.98
+    },
+    {
+      "number": 61,
+      "catalogId": 3,
+      "kind": "Silver",
+      "pixel": [
+        160,
+        386
+      ],
+      "error": 1.56,
+      "runnerUp": 45.11
+    },
+    {
+      "number": 62,
+      "catalogId": 33,
+      "kind": "Bronze",
+      "pixel": [
+        143,
+        579
+      ],
+      "error": 7.57,
+      "runnerUp": 56.25
+    },
+    {
+      "number": 63,
+      "catalogId": 34,
+      "kind": "Bronze",
+      "pixel": [
+        125,
+        530
+      ],
+      "error": 4.05,
+      "runnerUp": 45.66
+    },
+    {
+      "number": 64,
+      "catalogId": 56,
+      "kind": "Bronze",
+      "pixel": [
+        79,
+        438
+      ],
+      "error": 3.74,
+      "runnerUp": 57.56
+    },
+    {
+      "number": 65,
+      "catalogId": 57,
+      "kind": "Bronze",
+      "pixel": [
+        123,
+        366
+      ],
+      "error": 4.84,
+      "runnerUp": 38.84
+    },
+    {
+      "number": 66,
+      "catalogId": 7,
+      "kind": "Silver",
+      "pixel": [
+        104,
+        330
+      ],
+      "error": 2.11,
+      "runnerUp": 40.76
+    },
+    {
+      "number": 67,
+      "catalogId": 58,
+      "kind": "Bronze",
+      "pixel": [
+        159,
+        312
+      ],
+      "error": 1.24,
+      "runnerUp": 58.54
+    },
+    {
+      "number": 68,
+      "catalogId": 55,
+      "kind": "Bronze",
+      "pixel": [
+        136,
+        443
+      ],
+      "error": 0.86,
+      "runnerUp": 60.28
+    }
+  ]
+}

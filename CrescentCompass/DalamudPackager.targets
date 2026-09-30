@@ -1,0 +1,6 @@
+<Project>
+  <!-- Release archives are produced by scripts/Package.ps1, which also includes notices and matching source. -->
+  <Target Name="CrescentCompassManifest" AfterTargets="Build">
+    <DalamudPackager ProjectDir="$(ProjectDir)" OutputPath="$(OutputPath)" AssemblyName="$(AssemblyName)" MakeZip="false" />
+  </Target>
+</Project>

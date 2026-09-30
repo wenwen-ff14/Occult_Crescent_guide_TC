@@ -1,0 +1,26 @@
+CrescentCompass 0.5.3 exploration unlock audit — 2026-09-30
+TC client: 2026.09.14.0000.0000
+Read-only Lumina MKDLore / local Dalamud API 13 IL metadata audit.
+
+Local Dalamud UnlockState.IsMKDLoreUnlocked: MKDLore.get_Unknown2 -> IsUnlockLinkUnlocked.
+IsUnlockLinkUnlocked: checks PlayerState.IsLoaded, rejects zero, queries UIState unlock state.
+Plugin additionally checks IPlayerState.IsLoaded, nonzero ContentId, and current object EntityId.
+No native function or game memory invoked by the offline metadata audit.
+
+MKDLore row ID | TC Unknown2 (unlock link)
+5  | 508
+7  | 509
+9  | 510
+12 | 514
+13 | 511
+15 | 512
+18 | 515
+19 | 513
+21 | 518
+22 | 519
+23 | 517
+24 | 516
+
+All 12 shipped outdoor records have valid nonzero unlock links. Record 30 (tower) remains excluded.
+Row order is NOT unlock-link order. Runtime passes the actual row to the SDK; no guessed bit positions.
+Offline checks establish the mapping, not a live character's completion result.

@@ -1,0 +1,18 @@
+ADVENTURE COUNT 340
+VALID 340 entries / 60 territories; South Horn=0, North Horn=0
+LORE EXCLUDED 2: 蜃景鎮, no matching island scene instance 11606900
+LOREPOINT 5: 調查隊營地 territory=1252 map=967 XYZ=857,73.17932,-692
+LOREPOINT 7: 圓頂城塞 territory=1252 map=967 XYZ=491.9049,95.99999,-222.5223
+LOREPOINT 9: 蜃景灘 territory=1252 map=967 XYZ=-61.66174,30.94501,-459.6475
+LOREPOINT 12: 南部丘陵 territory=1252 map=967 XYZ=89.89087,124.9975,3.982544
+LOREPOINT 13: 岩窟後街 territory=1252 map=967 XYZ=-564.0192,121.285,53.97119
+LOREPOINT 15: 禁忌廢都 territory=1252 map=967 XYZ=140.3372,66.89866,570.2448
+LOREPOINT 18: 古樹濕原 territory=1252 map=967 XYZ=-145.0065,73.98034,619.9891
+LOREPOINT 19: 階梯殿堂 territory=1252 map=967 XYZ=-291.7067,95.64343,404.8981
+LOREPOINT 21: 高層住宅遺址 territory=1252 map=967 XYZ=757.9918,70.3,614.0687
+LOREPOINT 22: 巨像兵工房遺址 territory=1252 map=967 XYZ=726.0089,120,59.86108
+LOREPOINT 23: 放浪神聖域遺址 territory=1252 map=967 XYZ=-885.008,3.8,-782.0096
+LOREPOINT 24: 大聖火台遺址 territory=1252 map=967 XYZ=-635.0652,203,717.9521
+LOREPOINT 30: 避世書庫 territory=1252 map=967 XYZ=697.9934,-415.95,-764.5838
+SURVEY 10965 channel=57: 在當前區域中感知到了個銀寶箱、個銅寶箱……！
+SURVEY 10966 channel=57: 目前區域現在似乎沒有寶箱……

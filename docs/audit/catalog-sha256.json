@@ -1,0 +1,34 @@
+[
+  {
+    "File": "CrescentCompass/Data/NorthHorn/carrot_locations.json",
+    "Hash": "FB2C11BFA7C0217D960BE77D3031D796E1035B8C3A6A4FEBB08E0374CB4A9688"
+  },
+  {
+    "File": "CrescentCompass/Data/NorthHorn/pot_candidates.json",
+    "Hash": "76E2DAF5C4958A8B5E6FA7C8CDB8703BE74B44C6E5F9C1A755464F89741F6BA9"
+  },
+  {
+    "File": "CrescentCompass/Data/NorthHorn/treasure_locations.json",
+    "Hash": "9CD3C9418EA427F96733FFE92C8574B4E711D4D5FA7AEE21343ED678631E632A"
+  },
+  {
+    "File": "CrescentCompass/Data/SouthHorn/carrot_locations.json",
+    "Hash": "29C4D8C5048035DB741CEEF755DF96CC5A2F5A9D0189DE7E42B55447C593442E"
+  },
+  {
+    "File": "CrescentCompass/Data/SouthHorn/exploration_locations.json",
+    "Hash": "CDB8B7D3D01B30526E962665B2769A98032700E934E8D3807165222DC90FD1F7"
+  },
+  {
+    "File": "CrescentCompass/Data/SouthHorn/pot_candidates.json",
+    "Hash": "B8846F5D9F623A395D9AA1A892F41813BF4C8F51E7077D980DD256BDBCE0F933"
+  },
+  {
+    "File": "CrescentCompass/Data/SouthHorn/tower_locations.json",
+    "Hash": "36725774ADA11E8C0ED88E81B2CABC181F98D3471D5F8EFB2C974434FB47AFA8"
+  },
+  {
+    "File": "CrescentCompass/Data/SouthHorn/treasure_locations.json",
+    "Hash": "0BAAF3168F423A3CC1E48371DC0A1D05B17086108C271445C8764BA7BF5684E3"
+  }
+]

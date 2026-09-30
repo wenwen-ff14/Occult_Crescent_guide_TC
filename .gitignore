@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.sdk/
+.vs/
+dist/
+.references/
+*.user
+*.suo
+.env
+.env.*

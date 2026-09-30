@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "territoryId": 1252,
+  "source": "TC client MKDLore.Unknown4 -> LGB EventObject.InstanceId; 2026.09.14.0000.0000",
+  "explorations": [
+    {
+      "id": 5,
+      "name": "調查隊營地",
+      "mapId": 967,
+      "instanceId": 11606902,
+      "x": 857,
+      "y": 73.17932,
+      "z": -692,
+      "requiresTower": false
+    },
+    {
+      "id": 7,
+      "name": "圓頂城塞",
+      "mapId": 967,
+      "instanceId": 11606904,
+      "x": 491.9049,
+      "y": 95.99999,
+      "z": -222.5223,
+      "requiresTower": false
+    },
+    {
+      "id": 9,
+      "name": "蜃景灘",
+      "mapId": 967,
+      "instanceId": 11606906,
+      "x": -61.66174,
+      "y": 30.94501,
+      "z": -459.6475,
+      "requiresTower": false
+    },
+    {
+      "id": 12,
+      "name": "南部丘陵",
+      "mapId": 967,
+      "instanceId": 11606915,
+      "x": 89.89087,
+      "y": 124.9975,
+      "z": 3.982544,
+      "requiresTower": false
+    },
+    {
+      "id": 13,
+      "name": "岩窟後街",
+      "mapId": 967,
+      "instanceId": 11606909,
+      "x": -564.0192,
+      "y": 121.285,
+      "z": 53.97119,
+      "requiresTower": false
+    },
+    {
+      "id": 15,
+      "name": "禁忌廢都",
+      "mapId": 967,
+      "instanceId": 11606912,
+      "x": 140.3372,
+      "y": 66.89866,
+      "z": 570.2448,
+      "requiresTower": false
+    },
+    {
+      "id": 18,
+      "name": "古樹濕原",
+      "mapId": 967,
+      "instanceId": 11606922,
+      "x": -145.0065,
+      "y": 73.98034,
+      "z": 619.9891,
+      "requiresTower": false
+    },
+    {
+      "id": 19,
+      "name": "階梯殿堂",
+      "mapId": 967,
+      "instanceId": 11606914,
+      "x": -291.7067,
+      "y": 95.64343,
+      "z": 404.8981,
+      "requiresTower": false
+    },
+    {
+      "id": 21,
+      "name": "高層住宅遺址",
+      "mapId": 967,
+      "instanceId": 11606925,
+      "x": 757.9918,
+      "y": 70.3,
+      "z": 614.0687,
+      "requiresTower": false
+    },
+    {
+      "id": 22,
+      "name": "巨像兵工房遺址",
+      "mapId": 967,
+      "instanceId": 11606926,
+      "x": 726.0089,
+      "y": 120,
+      "z": 59.86108,
+      "requiresTower": false
+    },
+    {
+      "id": 23,
+      "name": "放浪神聖域遺址",
+      "mapId": 967,
+      "instanceId": 11606924,
+      "x": -885.008,
+      "y": 3.8,
+      "z": -782.0096,
+      "requiresTower": false
+    },
+    {
+      "id": 24,
+      "name": "大聖火台遺址",
+      "mapId": 967,
+      "instanceId": 11606923,
+      "x": -635.0652,
+      "y": 203,
+      "z": 717.9521,
+      "requiresTower": false
+    }
+  ]
+}

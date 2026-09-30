@@ -1,0 +1,826 @@
+{
+  "territoryId": 1252,
+  "clientVersion": "2026.09.14.0000.0000",
+  "treasures": [
+    {
+      "instanceId": 11324657,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 699.9771,
+      "y": -459.85,
+      "z": 265.2281,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324658,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -800,
+      "y": -876.0052,
+      "z": 328.7459,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324659,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -337,
+      "y": -840.0244,
+      "z": 122.9953,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324660,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 700,
+      "y": -476,
+      "z": -693.9894,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324661,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 699.9771,
+      "y": -476,
+      "z": -697.9816,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324662,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 544.4913,
+      "y": -489,
+      "z": -111.0279,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324663,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 745.9518,
+      "y": -489,
+      "z": -184.6632,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324664,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 524.507,
+      "y": -489,
+      "z": 55.40434,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324665,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 875.509,
+      "y": -489,
+      "z": 55.37513,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324666,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 814.9586,
+      "y": -500,
+      "z": -528.0464,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324667,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 819.041,
+      "y": -500.0229,
+      "z": -528.0524,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324668,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 632.9246,
+      "y": -500,
+      "z": -470.8954,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11324729,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 810.7925,
+      "y": 72.4133,
+      "z": -681.686,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11786612,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 577.4303,
+      "y": -500,
+      "z": -504.8788,
+      "layer": "BA_treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559538,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 770.7484,
+      "y": 108,
+      "z": -143.5417,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559539,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -283.9552,
+      "y": 116,
+      "z": 377.0352,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559540,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -682.765,
+      "y": 135.619,
+      "z": -195.2697,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559541,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 697.322,
+      "y": 70,
+      "z": 597.9247,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559542,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 517.7539,
+      "y": 67.89658,
+      "z": 236.1333,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559543,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -825.1431,
+      "y": 3.000001,
+      "z": -832.2519,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559544,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -798.2147,
+      "y": 105.6067,
+      "z": -310.5364,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559545,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -645.655,
+      "y": 203,
+      "z": 710.1702,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559572,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 617.09,
+      "y": 66.30869,
+      "z": -703.8834,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559575,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 490.4097,
+      "y": 62.47942,
+      "z": -590.5699,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559576,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 666.5449,
+      "y": 79.133,
+      "z": -480.3602,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559578,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 870.6949,
+      "y": 95.70259,
+      "z": -388.3269,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559579,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 354.1161,
+      "y": 95.66346,
+      "z": -288.8991,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559581,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 386.9534,
+      "y": 96.81672,
+      "z": -451.3467,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559583,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 779.0187,
+      "y": 96.09999,
+      "z": -256.2432,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559585,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 475.7305,
+      "y": 95.99998,
+      "z": -87.08331,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559586,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 609.6239,
+      "y": 108,
+      "z": 117.292,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559587,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 726.2838,
+      "y": 108.15,
+      "z": -67.89844,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559597,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 381.7654,
+      "y": 22.17779,
+      "z": -743.6484,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559599,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -140.4593,
+      "y": 22.38009,
+      "z": -414.2672,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559600,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 142.1073,
+      "y": 16.41255,
+      "z": -574.0597,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559602,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -118.9746,
+      "y": 4.999999,
+      "z": -708.4307,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559634,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -490.9896,
+      "y": 2.999973,
+      "z": -529.5948,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559635,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -451.6823,
+      "y": 2.999899,
+      "z": -775.5703,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559636,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 245.6244,
+      "y": 109.1374,
+      "z": -18.17352,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559637,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 55.31384,
+      "y": 111.3152,
+      "z": -289.0822,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559638,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -25.68097,
+      "y": 102.2299,
+      "z": 150.1945,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559639,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 277.8085,
+      "y": 103.7989,
+      "z": 241.9072,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559640,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -487.1138,
+      "y": 98.53056,
+      "z": -205.4628,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559641,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -158.6481,
+      "y": 98.64929,
+      "z": -132.7383,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559644,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -444.1138,
+      "y": 90.69106,
+      "z": 26.23022,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559650,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -394.8882,
+      "y": 106.7444,
+      "z": 175.4634,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559682,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -713.7979,
+      "y": 62.06589,
+      "z": 192.6382,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559705,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -756.8018,
+      "y": 76.57336,
+      "z": 97.3678,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559713,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 256.1532,
+      "y": 73.18745,
+      "z": 492.3628,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559719,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 35.72131,
+      "y": 65.11028,
+      "z": 648.9813,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559724,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 294.911,
+      "y": 56.1,
+      "z": 640.2228,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559731,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 140.978,
+      "y": 56,
+      "z": 770.9924,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559735,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 642.9998,
+      "y": 70,
+      "z": 407.7974,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559741,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 471.2137,
+      "y": 70.3,
+      "z": 530.022,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559748,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 433.7072,
+      "y": 70.3,
+      "z": 683.5278,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559750,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 596.4902,
+      "y": 70.3,
+      "z": 622.7664,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559766,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -197.1924,
+      "y": 74.92635,
+      "z": 618.3412,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559782,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -372.6711,
+      "y": 75,
+      "z": 527.4281,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559783,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -401.6328,
+      "y": 85.06473,
+      "z": 332.5398,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559784,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -648.0049,
+      "y": 75,
+      "z": 403.9824,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559785,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -225.0248,
+      "y": 75,
+      "z": 804.9896,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559786,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 788.8761,
+      "y": 120.4,
+      "z": 109.3918,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559787,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 826.7184,
+      "y": 122,
+      "z": 435.0193,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559788,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 869.2913,
+      "y": 110,
+      "z": 581.2313,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559789,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -585.2598,
+      "y": 5,
+      "z": -864.8356,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559790,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -729.427,
+      "y": 5,
+      "z": -724.7883,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559791,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -661.677,
+      "y": 3.000001,
+      "z": -579.4919,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559793,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -884.123,
+      "y": 3.8,
+      "z": -682.002,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559796,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -729.9153,
+      "y": 116.5414,
+      "z": -79.05707,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559802,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -856.9345,
+      "y": 68.84718,
+      "z": -93.14438,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559806,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -767.4455,
+      "y": 115.6225,
+      "z": -235.0037,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559808,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -680.5371,
+      "y": 104.8606,
+      "z": -354.7875,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559809,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -550.1168,
+      "y": 107,
+      "z": 627.767,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559883,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -729.5186,
+      "y": 107,
+      "z": 561.1809,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559885,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -784.7483,
+      "y": 139,
+      "z": 699.7836,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559886,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -600.2722,
+      "y": 139,
+      "z": 802.6409,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559887,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -676.3867,
+      "y": 171,
+      "z": 640.4058,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559889,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -716.1212,
+      "y": 171,
+      "z": 794.4304,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559890,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 835.1108,
+      "y": 70,
+      "z": 699.1224,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559896,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": 8.987488,
+      "y": 103.2238,
+      "z": 426.993,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559900,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -256.8552,
+      "y": 121,
+      "z": 125.0781,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    },
+    {
+      "instanceId": 11559907,
+      "dataId": 0,
+      "sgbId": 0,
+      "x": -343.1602,
+      "y": 52.35337,
+      "z": -382.1317,
+      "layer": "Field_Treasure",
+      "source": "planmap.lgb"
+    }
+  ]
+}

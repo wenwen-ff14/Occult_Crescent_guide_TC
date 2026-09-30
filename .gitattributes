@@ -1,0 +1,13 @@
+* text=auto
+*.cs text eol=lf
+*.csproj text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.ps1 text eol=lf
+*.png binary
+*.zip binary
+# Preserve audited catalog hashes and unmodified upstream snapshots byte-for-byte.
+CrescentCompass/Data/** -text whitespace=cr-at-eol
+third-party/** -text whitespace=cr-at-eol
+docs/audit/** -text whitespace=cr-at-eol
+docs/audit/*.txt whitespace=cr-at-eol,-blank-at-eol

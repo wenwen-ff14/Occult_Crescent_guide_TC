@@ -24,6 +24,7 @@ internal sealed class CompassTheme : IDisposable
         Color(ImGuiCol.WindowBg, Background); Color(ImGuiCol.ChildBg, Surface); Color(ImGuiCol.PopupBg, Surface);
         Color(ImGuiCol.Border, Border); Color(ImGuiCol.Text, Text); Color(ImGuiCol.TextDisabled, Muted);
         Color(ImGuiCol.TitleBg, Surface); Color(ImGuiCol.TitleBgActive, Surface);
+        Color(ImGuiCol.MenuBarBg, Surface);
         Color(ImGuiCol.FrameBg, Raised); Color(ImGuiCol.FrameBgHovered, new(0.14f, 0.21f, 0.26f, 1));
         Color(ImGuiCol.FrameBgActive, new(0.17f, 0.29f, 0.30f, 1));
         Color(ImGuiCol.Button, Raised); Color(ImGuiCol.ButtonHovered, new(0.16f, 0.26f, 0.30f, 1));

@@ -146,7 +146,7 @@ public sealed partial class Plugin : IDalamudPlugin
         windows.AddWindow(window);
         Commands.AddHandler("/crescent", new CommandInfo(OnCommand)
         {
-            HelpMessage = "新月島尋寶羅盤。route 規劃，pause 暫停，resume 繼續，stop 終止，flag 下一站旗標，pot 魔法罐搜尋點，next 已巡查，reset 續巡，clear 清除巡查重排。",
+            HelpMessage = "新月島尋寶羅盤。ce 開啟 CE 冷卻，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 下一站旗標，pot 魔法罐搜尋點，next 已巡查，reset 續巡，clear 清除巡查重排。",
         });
         Framework.Update += Update;
         Chat.ChatMessage += OnChatMessage;
@@ -744,6 +744,7 @@ public sealed partial class Plugin : IDalamudPlugin
     {
         switch (args.Trim().ToLowerInvariant())
         {
+            case "ce": window.OpenCeCooldowns(); return;
             case "route": Plan(); break;
             case "flag": Flag(Remaining.FirstOrDefault()); break;
             case "next": Next(); break;

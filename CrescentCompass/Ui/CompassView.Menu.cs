@@ -13,28 +13,57 @@ internal sealed partial class CompassView
     private bool ceRecordedOnly;
     internal IReadOnlyList<(CompassPage Page, Vector2 Center)> MenuTargets => menuTargets;
     private readonly List<(CompassPage Page, Vector2 Center)> menuTargets = [];
+    internal Dictionary<CompassPage, Vector2> MenuItemTargets { get; } = [];
+    internal int CeRowsDrawn { get; private set; }
 
-    private void DrawNavigation()
+    private void DrawNavigation(CompassViewState state, CompassActions actions)
     {
-        string[] labels = ["巡查路線", "魔法罐", "CE 冷卻", "探索筆記", "設定"];
-        var width = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X * 4) / 5;
+        string[] labels = ["巡查", "魔法罐", "CE 冷卻", "探索筆記", "設定"];
+        string[] destinations = ["路線與地點", "尋寶與 FATE", "查看冷卻紀錄", "查看島上地點", "顯示與紀錄設定"];
         menuTargets.Clear();
+        MenuItemTargets.Clear();
+        if (!ImGui.BeginMenuBar()) return;
         for (var i = 0; i < labels.Length; i++)
         {
-            if (i != 0) ImGui.SameLine();
-            var origin = ImGui.GetCursorScreenPos();
-            var selected = Page == (CompassPage)i;
-            ImGui.PushStyleColor(ImGuiCol.Button, selected ? Alpha(Mint, 0.22f) : Surface);
-            ImGui.PushStyleColor(ImGuiCol.Text, selected ? Mint : Muted);
-            if (ImGui.Button(labels[i], new Vector2(width, U(36)))) Page = (CompassPage)i;
-            ImGui.PopStyleColor(2);
-            menuTargets.Add(((CompassPage)i, origin + new Vector2(width / 2, U(18))));
+            var page = (CompassPage)i;
+            var open = ImGui.BeginMenu(labels[i]);
+            menuTargets.Add((page, (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2));
+            if (!open) continue;
+            if (ImGui.MenuItem(destinations[i], "", Page == page)) Page = page;
+            MenuItemTargets[page] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+            ImGui.Separator();
+            switch (page)
+            {
+                case CompassPage.Patrol:
+                    var hasRoute = (state.Active || state.Transit) && (state.Route.Count > 0 || state.Planning);
+                    if (ImGui.MenuItem("暫停巡查", "", false, hasRoute && state.Controls?.Paused != true)) actions.Pause?.Invoke();
+                    if (ImGui.MenuItem("繼續巡查", "", false, hasRoute && state.Active && state.Controls?.Paused == true)) actions.Resume?.Invoke();
+                    if (ImGui.MenuItem("終止巡查", "", false, hasRoute)) actions.Stop?.Invoke();
+                    break;
+                case CompassPage.Pot:
+                    if (ImGui.MenuItem("自動追蹤位置與旗標", "", state.Pot?.AutoFlag == true)) actions.SetPotAutoFlag?.Invoke(state.Pot?.AutoFlag != true);
+                    if (ImGui.MenuItem("FATE 出現時通知", "", state.Fates?.Notify == true)) actions.SetPotFateNotify?.Invoke(state.Fates?.Notify != true);
+                    break;
+                case CompassPage.Ce:
+                    if (ImGui.MenuItem("自動記錄 CE 冷卻", "", state.Ce?.Enabled == true)) actions.SetCeTracking?.Invoke(state.Ce?.Enabled != true);
+                    break;
+                case CompassPage.Exploration:
+                    if (ImGui.MenuItem("納入巡查與場景提示", "", state.Filters.Exploration)) actions.SetFilters(state.Filters with { Exploration = !state.Filters.Exploration });
+                    if (ImGui.MenuItem("只顯示未探索地點", "", state.Filters.OnlyUnexplored)) actions.SetFilters(state.Filters with { OnlyUnexplored = !state.Filters.OnlyUnexplored });
+                    break;
+                case CompassPage.Settings:
+                    if (ImGui.MenuItem("場景位置提示", "", state.WorldHints)) actions.SetWorldHints(!state.WorldHints);
+                    if (ImGui.MenuItem("隱藏其他玩家（保留倒地者）", "", state.HideOtherPlayers)) actions.SetHideOtherPlayers?.Invoke(!state.HideOtherPlayers);
+                    break;
+            }
+            ImGui.EndMenu();
         }
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        ImGui.EndMenuBar();
     }
 
     private void DrawCeCooldowns(CompassViewState state, CompassActions actions)
     {
+        CeRowsDrawn = 0;
         ImGui.TextColored(Mint, "危命任務 · 本場冷卻紀錄");
         var ce = state.Ce;
         var enabled = ce?.Enabled ?? true;
@@ -45,13 +74,13 @@ internal sealed partial class CompassView
         ImGui.TextWrapped("自動出現約 120 分鐘；打怪觸發約 60 分鐘。從觀測到戰鬥結束時計算，屬社群預估，非伺服器倒數；到期仍需等待事件或觸發條件。");
         var available = (state.Active || state.Transit) && state.Region.Contains("南");
         if (!available)
-        { ImGui.TextWrapped(state.Active ? "目前僅提供已核對的南部 15 個 CE；北部尚未支援。" : "進入新月島南部後開始記錄；上島前的結束時間未知。"); return; }
-        ImGui.TextColored(ce?.Enabled != true || ce.Snapshot.ScanFresh != true ? Carrot : Muted,
-            state.Transit ? "傳送中 · 已知冷卻保留，暫停事件觀測" : ce?.Enabled != true ? "記錄已關閉 · 已知冷卻繼續計時" :
+            ImGui.TextWrapped(state.Active ? "目前僅提供已核對的南部 15 個 CE；北部尚未支援。以下為南部清單。" : "進島前也可查看南部 15 個 CE；進入新月島南部後開始記錄，上島前的結束時間未知。");
+        ImGui.TextColored(available && (ce?.Enabled != true || ce.Snapshot.ScanFresh != true) ? Carrot : Muted,
+            !available ? "南部清單預覽 · 尚無本場事件資料" : state.Transit ? "傳送中 · 已知冷卻保留，暫停事件觀測" : ce?.Enabled != true ? "記錄已關閉 · 已知冷卻繼續計時" :
             ce.Snapshot.ScanFresh ? "事件資料已更新 · 同島傳送保留紀錄，離島／換分流／重載清除" : "等待有效事件資料 · 不將讀取中斷當成戰鬥結束");
         ImGui.Checkbox("只顯示已觀測的 CE", ref ceRecordedOnly);
         var now = ce?.Now ?? DateTimeOffset.UtcNow;
-        var snapshot = ce?.Snapshot ?? new CeCooldownTracker().Snapshot(now);
+        var snapshot = available && ce is not null ? ce.Snapshot : new CeCooldownTracker().Snapshot(now);
         var rows = snapshot.Entries.Where(e => !ceRecordedOnly || e.LastSeen is not null)
             .Select(e => (!state.Active || !enabled || !snapshot.ScanFresh) &&
                 e.Status is CeStatus.Register or CeStatus.Warmup or CeStatus.Battle or CeStatus.ConfirmingEnd
@@ -65,6 +94,7 @@ internal sealed partial class CompassView
         ImGui.TableSetupScrollFreeze(0, 1); ImGui.TableHeadersRow();
         foreach (var row in rows.OrderBy(e => CeOrder(e.Status)).ThenBy(e => e.EligibleAt).ThenBy(e => e.Definition.Id))
         {
+            CeRowsDrawn++;
             ImGui.PushID(row.Definition.Id);
             ImGui.TableNextRow(ImGuiTableRowFlags.None, U(61)); ImGui.TableNextColumn();
             ImGui.TextWrapped(row.Definition.Name);

@@ -3,7 +3,7 @@
   "Name": "CrescentCompass｜新月島尋寶羅盤",
   "InternalName": "CrescentCompass",
   "RepoUrl": "https://github.com/wenwen-ff14/Occult_Crescent_guide_TC",
-  "Punchline": "尋寶路線、魔法罐、CE 冷卻與探索筆記分類選單",
+  "Punchline": "頂部下拉選單：尋寶路線、魔法罐、CE 冷卻與探索筆記",
   "Description": "依功能分為巡查路線、魔法罐、CE 冷卻、探索筆記、設定五個選單。自動記錄南部 15 個 CE 的戰鬥結束，顯示約 60／120 分鐘預估冷卻；到期不代表刷新，漏看結束不補算，同島傳送保留已知時間，離島或重載清除。南部 68 個寶箱依圖表編號排序，可任選起點、暫停／繼續／終止，依角色儲存上次開箱編號。地圖支援 Ctrl＋滾輪縮放與拖曳平移，另有地形最短順序模式。含島上 12 處未探索筆記篩選、魔法罐自動提示旗標、北罐／南罐座標、FATE 通知與預估倒數、其他玩家模型隱藏開關。固定候選點不代表個人可開權限。指令 /crescent。",
   "ApplicableVersion": "any",
   "DalamudApiLevel": 13,

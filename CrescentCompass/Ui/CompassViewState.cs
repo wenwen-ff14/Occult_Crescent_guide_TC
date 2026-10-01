@@ -26,7 +26,7 @@ internal sealed record CompassViewState(
     IReadOnlyList<Spot>? Unreachable = null, bool Transit = false,
     string ExplorationDetail = "等待角色探索紀錄；未讀取前不列入未探索清單。",
     bool HideOtherPlayers = false, string PlayerVisibilityDetail = "只在新月島生效，預設關閉。", CompassRouteControls? Controls = null,
-    CompassCeState? Ce = null);
+    CompassCeState? Ce = null, string PluginVersion = "預覽");
 internal sealed record CompassActions(
     Action<CompassFilters> SetFilters, Action<bool> SetWorldHints, Action Plan,
     Action<Spot?> Flag, Action Next, Action Restart,

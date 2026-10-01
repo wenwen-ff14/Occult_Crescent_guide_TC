@@ -14,7 +14,17 @@ https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/plug
 
 若先前使用 Dev Plugin Locations 載入本機版本，先停用該開發插件並移除其開發路徑，再安裝套件庫版本，避免同時載入兩份。需要地形步行路線時，請另行啟用相容 API 13 的 **vnavmesh**；目標偵測、固定座標與手動插旗可獨立使用。
 
-[下載 0.7.0 安裝包](https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.7.0.0.zip) · [對應版本原始碼](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/tree/v0.7.0) · [原始碼 ZIP](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/archive/refs/tags/v0.7.0.zip)
+[下載 0.7.1 安裝包](https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.7.1.0.zip) · [對應版本原始碼](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/tree/v0.7.1) · [原始碼 ZIP](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/archive/refs/tags/v0.7.1.zip)
+
+## 0.7.1 頂部下拉選單與 CE 入口
+
+- 功能分類改為桌面式頂部選單列：**巡查／魔法罐／CE 冷卻／探索筆記／設定**。點開選單後，第一項開啟對應頁面，下方提供常用操作與開關。
+- 開啟 **CE 冷卻 → 查看冷卻紀錄**，或直接輸入 `/crescent ce`。尚未上島也能查看南部 15 個 CE 清單；沒有本場觀測資料時顯示未知。
+- 視窗顯示實際載入 DLL 的版本。若看不到 CE 入口，先確認版本至少為 0.7.1；使用 Dev Plugin Locations 時，需要更新該路徑的本機 DLL，GitHub 套件庫更新不會替換開發路徑檔案。
+
+644 項核心檢查通過；已驗證五個原生下拉選單的實際點擊、切頁不觸發功能操作、島外 CE 清單、窄版／放大字體與 Ctrl＋滾輪地圖縮放。CE 冷卻仍依本場觀測推估，遊戲內事件生命週期與實際間隔待驗收。
+
+![頂部下拉選單與 CE 入口（離線示範資料）](docs/previews/menu-ce-open.png)
 
 ## 0.7.0 CE 冷卻與功能分類選單
 

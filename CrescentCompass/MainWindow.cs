@@ -16,6 +16,7 @@ internal sealed class MainWindow : Window
     public MainWindow(Plugin plugin) : base("新月島尋寶羅盤###CrescentCompass")
     {
         this.plugin = plugin;
+        Flags |= ImGuiWindowFlags.MenuBar;
         Size = new Vector2(920, 880);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(650, 560), MaximumSize = new Vector2(1600, 1600) };
@@ -28,6 +29,7 @@ internal sealed class MainWindow : Window
 
     internal static string KindName(SpotKind kind) => CompassView.KindName(kind);
     internal void OpenSettings() { view.Page = CompassPage.Settings; IsOpen = true; }
+    internal void OpenCeCooldowns() { view.Page = CompassPage.Ce; IsOpen = true; }
 
     public override void Draw()
     {
@@ -60,7 +62,8 @@ internal sealed class MainWindow : Window
             plugin.WalkingRoute?.Unreachable.Where(s => plugin.Session.CanPatrol(s.Id)).ToArray(),
             plugin.PatrolSuspended, plugin.ExplorationDetail, config.HideOtherPlayers, plugin.PlayerVisibilityDetail,
             new CompassRouteControls(config.UseChartRoute, config.ChartStartNumber, plugin.IsPaused, plugin.LastChestOpen, chartPoints, plugin.MapRevision),
-            new CompassCeState(config.TrackCeCooldowns, plugin.CeCooldowns.Snapshot(now), now)), actions);
+            new CompassCeState(config.TrackCeCooldowns, plugin.CeCooldowns.Snapshot(now), now),
+            PluginVersion: typeof(Plugin).Assembly.GetName().Version?.ToString(3) ?? "未知版本"), actions);
     }
 
     private CompassFateState FateState()

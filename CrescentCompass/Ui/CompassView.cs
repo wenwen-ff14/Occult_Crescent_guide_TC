@@ -40,8 +40,8 @@ internal sealed partial class CompassView
     internal void Draw(CompassViewState state, CompassActions actions)
     {
         scale = ImGui.GetFontSize() / 17f;
+        DrawNavigation(state, actions);
         DrawHeader(state);
-        DrawNavigation();
         // Independent scroll positions keep the menu visible; changing pages never changes tracking or routes.
         if (ImGui.BeginChild($"feature-page-{Page}", Vector2.Zero, false))
         {
@@ -80,7 +80,7 @@ internal sealed partial class CompassView
         var origin = ImGui.GetCursorScreenPos(); var width = ImGui.GetContentRegionAvail().X;
         var draw = ImGui.GetWindowDrawList();
         DrawCompass(draw, origin + new Vector2(U(22), U(24)), U(19), Mint);
-        Label(draw, origin + new Vector2(U(56), 0), "C R E S C E N T   C O M P A S S   ·   0.7.0", Muted, 11);
+        Label(draw, origin + new Vector2(U(56), 0), $"C R E S C E N T   C O M P A S S   ·   {state.PluginVersion}", Muted, 11);
         Label(draw, origin + new Vector2(U(55), U(19)), "新月島尋寶羅盤", Text, 25);
         var status = state.Active ? $"{state.Region}  ·  偵測中" : state.Transit
             ? state.Route.Count > 0 || state.Planning ? "傳送中 · 路線已保留" : "傳送中 · 無進行中路線"

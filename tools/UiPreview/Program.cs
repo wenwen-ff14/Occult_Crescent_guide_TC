@@ -70,10 +70,12 @@ unsafe
         var fateLocations = PotFateTracker.Definitions.Where(d => d.Territory == 1252).Select(d => new CompassFatePoint(d.Id,
             $"{(d.Side == "北側" ? "北罐" : "南罐")} · {d.Name}",
             $"X {Coordinates.ToMap(d.Location.X, 100, 0):F1} / Y {Coordinates.ToMap(d.Location.Z, 100, 0):F1}", "固定 FATE 地點")).ToArray();
+        var previewVersion = System.Xml.Linq.XDocument.Load(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../CrescentCompass/CrescentCompass.csproj")))
+            .Descendants("Version").Single().Value;
         var state = new CompassViewState(true, "新月島南部", origin, new CompassFilters(true, true, false, PointDisplayMode.Observed), true,
             live, live, live.Length + 4, 780, true, false, "已知位置會保留本場曾見目標；遠處是否仍有寶箱需到場確認。",
             new CompassPotState(false, true, "取得魔法罐後自動開始搜尋。", 0, false, null), 4,
-            Fates: new CompassFateState(true, "--:--", "下一場尚未確定", "尚無本場紀錄，偵測到魔法罐 FATE 後自動開始倒數。", [], fateLocations));
+            Fates: new CompassFateState(true, "--:--", "下一場尚未確定", "尚無本場紀錄，偵測到魔法罐 FATE 後自動開始倒數。", [], fateLocations), PluginVersion: previewVersion);
         var fateCountdown = new CompassFateState(true, "18:24", "南側 · 瑟瑟發抖的魔法甕", "預估 13:00:00 · 依上次 FATE 開始時間加 30 分鐘。", [], fateLocations);
         var fateActive = fateCountdown with { Countdown = "28:24", Active = [new CompassFatePoint(1976, "北側 · 幸福的魔法甕", "X 25.5 / Y 17.2", "進度 25% · 剩餘 13:24")] };
         using var explorationStream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "exploration_locations.json"));
@@ -122,7 +124,9 @@ unsafe
             (Name: "ce-transit", Width: 690, Height: 1000, Scale: 1f, State: ceState with { Active = false, Transit = true }),
             (Name: "ce-disabled", Width: 690, Height: 1000, Scale: 1f, State: ceState with { Ce = ceState.Ce! with { Enabled = false } }),
             (Name: "ce-north", Width: 690, Height: 740, Scale: 1f, State: ceState with { Region = "新月島北部" }),
+            (Name: "ce-off-island", Width: 690, Height: 740, Scale: 1f, State: ceState with { Active = false }),
             (Name: "menu-navigation", Width: 960, Height: 1000, Scale: 1f, State: ceState),
+            (Name: "menu-ce-open", Width: 690, Height: 1000, Scale: 1f, State: ceState),
             (Name: "menu-settings", Width: 690, Height: 740, Scale: 1f, State: state),
             (Name: "chart-route", Width: 960, Height: 1300, Scale: 1f, State: chartState),
             (Name: "chart-compact", Width: 690, Height: 1550, Scale: 1f, State: chartState),
@@ -174,7 +178,7 @@ unsafe
         {
             var view = new CompassView { Page = scenario.Name switch
             {
-                var name when name.StartsWith("ce-") => CompassPage.Ce,
+                var name when name.StartsWith("ce-") || name == "menu-ce-open" => CompassPage.Ce,
                 var name when name.StartsWith("pot") || name.StartsWith("fate") => CompassPage.Pot,
                 var name when name.StartsWith("exploration") => CompassPage.Exploration,
                 var name when name.StartsWith("player-visibility") || name == "menu-settings" => CompassPage.Settings,
@@ -187,16 +191,29 @@ unsafe
             float scrollBefore = 0, scrollAfter = 0;
             var beforeActions = actionCount;
             CompassPage[] navigation = [CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings, CompassPage.Pot, CompassPage.Patrol];
-            for (var frame = 0; frame < (scenario.Name == "menu-navigation" ? 23 : scenario.Name == "chart-zoomed" ? 7 : 3); frame++)
+            for (var frame = 0; frame < (scenario.Name == "menu-navigation" ? 38 : scenario.Name is "chart-zoomed" or "menu-ce-open" ? 7 : 3); frame++)
             {
                 if (scenario.Name == "menu-navigation" && frame >= 3)
                 {
-                    var index = (frame - 3) / 4;
-                    var step = (frame - 3) % 4;
+                    var index = (frame - 3) / 7;
+                    var step = (frame - 3) % 7;
                     if (step == 0) io.AddMousePosEvent(view.MenuTargets.Single(t => t.Page == navigation[index]).Center.X, view.MenuTargets.Single(t => t.Page == navigation[index]).Center.Y);
                     if (step == 1) io.AddMouseButtonEvent(0, true);
                     if (step == 2) io.AddMouseButtonEvent(0, false);
-                    if (step == 3 && view.Page != navigation[index]) throw new InvalidOperationException($"Menu click failed: {navigation[index]}");
+                    if (step == 3)
+                    {
+                        if (!view.MenuItemTargets.TryGetValue(navigation[index], out var destination)) throw new InvalidOperationException($"Menu did not open: {navigation[index]}");
+                        io.AddMousePosEvent(destination.X, destination.Y);
+                    }
+                    if (step == 4) io.AddMouseButtonEvent(0, true);
+                    if (step == 5) io.AddMouseButtonEvent(0, false);
+                    if (step == 6 && view.Page != navigation[index]) throw new InvalidOperationException($"Submenu click failed: {navigation[index]}");
+                }
+                if (scenario.Name == "menu-ce-open")
+                {
+                    if (frame == 3) { var target = view.MenuTargets.Single(t => t.Page == CompassPage.Ce).Center; io.AddMousePosEvent(target.X, target.Y); }
+                    if (frame == 4) io.AddMouseButtonEvent(0, true);
+                    if (frame == 5) io.AddMouseButtonEvent(0, false);
                 }
                 if (scenario.Name == "chart-zoomed")
                 {
@@ -210,9 +227,11 @@ unsafe
                 {
                     ImGui.SetNextWindowPos(new Vector2(20));
                     ImGui.SetNextWindowSize(new Vector2(scenario.Width - 40, scenario.Height - 40));
-                    if (ImGui.Begin($"新月島尋寶羅盤 · 示範資料##{scenario.Name}", ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse))
+                    if (ImGui.Begin($"新月島尋寶羅盤 · 示範資料##{scenario.Name}", ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse))
                     {
                         view.Draw(scenario.State, actions);
+                        if (view.MenuTargets.Count != 5) throw new InvalidOperationException("All five native menu-bar entries must remain visible.");
+                        if (view.Page == CompassPage.Ce && view.CeRowsDrawn != 15) throw new InvalidOperationException("CE list must remain accessible before entering the island or receiving observations.");
                         if (frame == 3) scrollBefore = view.PageScroll;
                         if (frame == 6) scrollAfter = view.PageScroll;
                     }
@@ -222,6 +241,8 @@ unsafe
             }
             if (scenario.Name == "menu-navigation" && actionCount != beforeActions)
                 throw new InvalidOperationException("Changing feature pages must not change filters, routing, or tracking settings.");
+            if (scenario.Name == "menu-ce-open" && !view.MenuItemTargets.ContainsKey(CompassPage.Ce))
+                throw new InvalidOperationException("CE dropdown must be visible in the reference preview.");
             if (scenario.Name == "chart-zoomed" && (view.MapZoom < 1.5f || MathF.Abs(scrollAfter - scrollBefore) > 0.1f))
                 throw new InvalidOperationException($"Ctrl-wheel must zoom map without scrolling parent: zoom={view.MapZoom}, scroll={scrollBefore}->{scrollAfter}");
             var path = Path.Combine(output, $"{scenario.Name}.png");

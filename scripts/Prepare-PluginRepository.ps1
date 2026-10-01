@@ -34,7 +34,7 @@ $taskManifest.DownloadLinkTesting = $taskManifest.DownloadLinkInstall
 $taskManifest.IsHide = $false
 $taskManifest.IsTestingExclusive = $false
 $taskManifest.LastUpdate = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-$taskManifest.ImageUrls = @("$taskRawBase/docs/previews/chart-route.png", "$taskRawBase/docs/previews/ce-cooldowns.png", "$taskRawBase/docs/previews/pot.png")
+$taskManifest.ImageUrls = @("$taskRawBase/docs/previews/chart-route.png", "$taskRawBase/docs/previews/menu-ce-open.png", "$taskRawBase/docs/previews/pot.png")
 if ($Changelog) { $taskManifest.Changelog = $Changelog }
 $taskRepositoryJson = ConvertTo-Json -InputObject @($taskManifest) -Depth 10
 [IO.File]::WriteAllText((Join-Path $taskRoot 'pluginmaster.json'), $taskRepositoryJson + "`n", [Text.UTF8Encoding]::new($false))

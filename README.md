@@ -14,7 +14,18 @@ https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/plug
 
 若先前使用 Dev Plugin Locations 載入本機版本，先停用該開發插件並移除其開發路徑，再安裝套件庫版本，避免同時載入兩份。需要地形步行路線時，請另行啟用相容 API 13 的 **vnavmesh**；目標偵測、固定座標與手動插旗可獨立使用。
 
-[下載 0.7.1 安裝包](https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.7.1.0.zip) · [對應版本原始碼](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/tree/v0.7.1) · [原始碼 ZIP](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/archive/refs/tags/v0.7.1.zip)
+[下載 0.8.0 安裝包](https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.8.0.0.zip) · [對應版本原始碼](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/tree/v0.8.0) · [原始碼 ZIP](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/archive/refs/tags/v0.8.0.zip)
+
+## 0.8.0 CE 觸發條件與一般 FATE 自動標點
+
+- **CE 冷卻 → 查看冷卻與觸發條件**：每列顯示觸發方式；六種打怪 CE 顯示繁中怪物名稱與大致座標，其餘顯示隨時間自動出現。冷卻到期不保證立刻觸發，擊殺數未確認。也可輸入 `/crescent ce`。
+- 新增獨立 **FATE → 事件與自動標點** 選單，或 `/crescent fate`。**自動標點預設開啟**，涵蓋新月島所有一般 FATE（包含魔法罐 FATE），不把 CE 冷卻到期視為 FATE 出現。
+- 每場只標點一次；上島時已存在的事件也會標點。多場同時偵測時優先最新開始者，同時開始則選最近一場；其餘可在清單手動插旗。關閉後重新開啟只處理下一場新事件。
+- 魔法罐尋寶優先；讀條／互動期間等待。FATE 標點期間保留巡查路線，事件結束或按「解除本次標點並接續巡查」後接續。只插地圖旗標，不自動移動。
+
+676 項核心檢查通過；API 13 編譯零警告、零錯誤。已驗證六個選單切頁、窄版及放大字體預覽。實際遊戲中新 FATE 出現、插旗和巡查接續仍待操作驗收。詳見 [CE 觸發條件](docs/CE_COOLDOWNS.md) 與 [FATE 自動標點](docs/FATE_AUTO_FLAGS.md)。
+
+![一般 FATE 自動標點（離線示範資料）](docs/previews/general-fates.png)
 
 ## 0.7.1 頂部下拉選單與 CE 入口
 

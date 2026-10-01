@@ -67,6 +67,7 @@ internal sealed partial class CompassView
                     else DrawWaiting(state);
                     break;
                 case CompassPage.Ce: DrawCeCooldowns(state, actions); break;
+                case CompassPage.Fate: DrawGeneralFates(state, actions); break;
                 case CompassPage.Exploration: DrawExplorationPage(state, actions); break;
                 case CompassPage.Settings: DrawSettings(state, actions); break;
             }

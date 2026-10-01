@@ -97,7 +97,7 @@ public sealed partial class Plugin : IDalamudPlugin
     private RouteLeg? inspectionPath;
     private long inspectionQueriedAt;
     private long inspectionSampleAt;
-    internal RouteLeg? CurrentLeg => Active && !IsPaused && !IsPlanning && !PotNavigationActive && inspectionPath is { } path &&
+    internal RouteLeg? CurrentLeg => Active && !IsPaused && !IsPlanning && !EventNavigationActive && inspectionPath is { } path &&
         Remaining.FirstOrDefault()?.Id == path.DestinationId && Environment.TickCount64 - inspectionSampleAt <= 3000 &&
         Vector3.Distance(Position, path.From) <= 20 ? path : null;
 
@@ -114,7 +114,7 @@ public sealed partial class Plugin : IDalamudPlugin
     internal bool Active => !disposed && Client.IsLoggedIn && Objects.LocalPlayer != null &&
         SpotCatalog.IsSupported(Client.TerritoryType) && Session.Territory == Client.TerritoryType && !IsLoading && !patrolContext.IsSuspended;
     internal bool RouteChanged => routeRevision != Session.Revision;
-    internal string AutomationDetail => IsPaused ? "使用者已暫停，停止換站與自動換旗；魔法罐追蹤另行運作。" : !Active ? "進入新月島後才會開始判定。" : IsPlanning ? "地形路線計算中，暫停巡查判定。" : PotNavigationActive ? "魔法罐尋寶中，暫停一般巡查與自動換旗。" : routeAutomation.Detail;
+    internal string AutomationDetail => IsPaused ? "使用者已暫停巡查；魔法罐與 FATE 使用獨立開關。" : !Active ? "進入新月島後才會開始判定。" : IsPlanning ? "地形路線計算中，暫停巡查判定。" : PotNavigationActive ? "魔法罐尋寶中，暫停一般巡查與自動換旗。" : FateNavigationActive ? "FATE 標點中，巡查保留；可在 FATE 選單解除並接續。" : routeAutomation.Detail;
     internal string Message { get; private set; } = "進入新月島後會自動開始偵測。";
     private static bool IsLoading => Conditions[ConditionFlag.BetweenAreas] || Conditions[ConditionFlag.BetweenAreas51];
 
@@ -146,7 +146,7 @@ public sealed partial class Plugin : IDalamudPlugin
         windows.AddWindow(window);
         Commands.AddHandler("/crescent", new CommandInfo(OnCommand)
         {
-            HelpMessage = "新月島尋寶羅盤。ce 開啟 CE 冷卻，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 下一站旗標，pot 魔法罐搜尋點，next 已巡查，reset 續巡，clear 清除巡查重排。",
+            HelpMessage = "新月島尋寶羅盤。ce 冷卻與觸發條件，fate 事件與自動標點，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 下一站旗標，pot 魔法罐搜尋點，next 已巡查，reset 續巡，clear 清除巡查重排。",
         });
         Framework.Update += Update;
         Chat.ChatMessage += OnChatMessage;
@@ -159,13 +159,14 @@ public sealed partial class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenMainUi += OpenWindow;
         PluginInterface.UiBuilder.OpenConfigUi += window.OpenSettings;
-        Log.Information($"CrescentCompass {assembly.GetName().Version} loaded; auto-next={Config.AutoAdvanceChests}, empty-radius={Config.EmptyCheckRadius:F0}m, mode={Config.DisplayMode}, pot-auto={Config.AutoFlagPot}, pot-fate-notify={Config.NotifyPotFateSpawn}, hide-players={Config.HideOtherPlayers}");
+        Log.Information($"CrescentCompass {assembly.GetName().Version} loaded; auto-next={Config.AutoAdvanceChests}, empty-radius={Config.EmptyCheckRadius:F0}m, mode={Config.DisplayMode}, pot-auto={Config.AutoFlagPot}, pot-fate-notify={Config.NotifyPotFateSpawn}, fate-auto={Config.AutoFlagFates}, hide-players={Config.HideOtherPlayers}");
     }
 
     private void TerritoryChanged(ushort _) { patrolContext.Suspend(); SuspendPatrol(); }
 
     private void SuspendPatrol()
     {
+        FateFlags.Suspend();
         CeCooldowns.Suspend();
         if (routeSuspended) return;
         routeSuspended = true;
@@ -182,6 +183,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void ResetSession(ushort territory)
     {
+        FateFlags.Reset(); fateNavigationWasActive = false;
         CeCooldowns.Reset();
         StopPlanning(); StopGroundInspection(); WalkingRoute = null;
         pendingResume = null; routeSuspended = false; routePriorities = new HashSet<string>();
@@ -220,7 +222,7 @@ public sealed partial class Plugin : IDalamudPlugin
         if (now - lastScan < 500) return;
         lastScan = now;
         navigationStatus = GroundNavigation.Status();
-        UpdatePotFates(now);
+        UpdateFates(now);
         UpdateCeCooldowns(now);
         UpdateExploration(now);
         try
@@ -238,11 +240,12 @@ public sealed partial class Plugin : IDalamudPlugin
             if (chestOpenTracker.Update(catalog, observations, Position, player.IsCasting ? player.CastTargetObjectId : 0, now, time) is { } opened)
                 SaveChestProgress(opened);
             potAutomation.Update(Pot, Config.AutoFlagPot, !IsOccupied, now, FlagPot);
+            UpdateFateNavigation();
             ResumeWalkingPlan();
             PollWalkingPlan();
             if (!IsPaused && !IsPlanning) UpdateRoute(observations, now);
             // Keep pot navigation in charge for the whole search, including waits for a reveal or new hint.
-            if (!IsPaused && !IsPlanning && !potAutomation.OwnsNavigation && Config.AutoAdvanceChests && !IsOccupied && routeAutomation.CanAttemptFlag(Remaining.FirstOrDefault()?.Id, now))
+            if (!IsPaused && !IsPlanning && !EventNavigationActive && Config.AutoAdvanceChests && !IsOccupied && routeAutomation.CanAttemptFlag(Remaining.FirstOrDefault()?.Id, now))
             {
                 var flagged = false;
                 try { flagged = TryFlag(Remaining[0]); }
@@ -261,16 +264,16 @@ public sealed partial class Plugin : IDalamudPlugin
     private static bool IsOccupied => Conditions[ConditionFlag.OccupiedInEvent] || Conditions[ConditionFlag.OccupiedInCutSceneEvent] ||
         Conditions[ConditionFlag.WatchingCutscene] || Conditions[ConditionFlag.WatchingCutscene78] || Objects.LocalPlayer?.IsCasting == true;
 
-    private void UpdatePotFates(long tick)
+    private void UpdateFates(long tick)
     {
         try
         {
-            if (Fates.Address == 0) return;
+            if (Fates.Address == 0) { FateFlags.Suspend(); return; }
             List<PotFateObservation> observed = [];
+            List<FateFlagObservation> allFates = [];
             foreach (var fate in Fates)
             {
-                if (!Fates.IsValid(fate) || fate.TerritoryType.RowId != Client.TerritoryType ||
-                    PotFateTracker.Find(fate.FateId, Client.TerritoryType) is null) continue;
+                if (!Fates.IsValid(fate) || fate.TerritoryType.RowId != Client.TerritoryType) continue;
                 var phase = fate.State switch
                 {
                     FateState.Running => PotFatePhase.Running,
@@ -279,10 +282,15 @@ public sealed partial class Plugin : IDalamudPlugin
                     _ => (PotFatePhase?)null,
                 };
                 if (phase is null) continue;
+                allFates.Add(new(fate.FateId, Client.TerritoryType, fate.Name.TextValue, fate.Position, fate.StartTimeEpoch,
+                    fate.Duration, fate.Progress, phase != PotFatePhase.Finished, phase == PotFatePhase.Preparation));
+                if (PotFateTracker.Find(fate.FateId, Client.TerritoryType) is null) continue;
                 observed.Add(new(fate.FateId, Client.TerritoryType, phase.Value, fate.StartTimeEpoch, fate.Duration,
                     fate.Progress, fate.Position, fate.Name.TextValue));
             }
-            var notices = PotFates.Update(Client.TerritoryType, Client.Instance, observed, DateTimeOffset.UtcNow, Config.NotifyPotFateSpawn);
+            var now = DateTimeOffset.UtcNow;
+            FateFlags.Observe(Client.TerritoryType, Client.Instance, allFates, now, Config.AutoFlagFates, Position);
+            var notices = PotFates.Update(Client.TerritoryType, Client.Instance, observed, now, Config.NotifyPotFateSpawn);
             foreach (var fate in notices)
             {
                 var position = Coordinates.IsFinite(fate.Position) ? MapPosition(new Spot("pot-fate", Client.TerritoryType, SpotKind.Other, 0, fate.Position)) : "座標尚未就緒";
@@ -297,7 +305,8 @@ public sealed partial class Plugin : IDalamudPlugin
         }
         catch (Exception error)
         {
-            if (tick - lastFateError > 10_000) { lastFateError = tick; Log.Error(error, "CrescentCompass pot FATE scan failed"); }
+            FateFlags.Suspend();
+            if (tick - lastFateError > 10_000) { lastFateError = tick; Log.Error(error, "CrescentCompass FATE scan failed"); }
         }
     }
 
@@ -307,16 +316,7 @@ public sealed partial class Plugin : IDalamudPlugin
         PluginInterface.SavePluginConfig(Config);
     }
 
-    internal void FlagPotFate(ushort id)
-    {
-        var fate = PotFates.Snapshot(DateTimeOffset.UtcNow).Active.FirstOrDefault(f => f.Definition.Id == id);
-        if (!Active || fate is null || fate.Definition.Territory != Client.TerritoryType || Client.MapId == 0 || !Coordinates.IsFinite(fate.Position))
-        { Message = "目前沒有可確認的魔法罐 FATE 地點。"; return; }
-        routeAutomation.CancelFlag();
-        var ok = GameGui.OpenMapWithMapLink(new MapLinkPayload(Client.TerritoryType, Client.MapId,
-            (int)MathF.Round(fate.Position.X * 1000), (int)MathF.Round(fate.Position.Z * 1000)));
-        Message = ok ? $"FATE 旗標：{fate.Name}" : "FATE 插旗未成功，可稍後再試。";
-    }
+    internal void FlagPotFate(ushort id) => FlagGeneralFate(id);
 
     internal Spot? PotFateLocation(ushort id)
     {
@@ -332,6 +332,7 @@ public sealed partial class Plugin : IDalamudPlugin
     {
         if (!Active || PotFateLocation(id) is not { } location || location.Territory != Client.TerritoryType)
         { Message = "目前沒有此區域的魔法罐固定座標可插旗。"; return; }
+        ReleaseFateNavigation();
         routeAutomation.CancelFlag();
         var ok = GameGui.OpenMapWithMapLink(new MapLinkPayload(location.Territory, location.MapId,
             (int)MathF.Round(location.Position.X * 1000), (int)MathF.Round(location.Position.Z * 1000)));
@@ -340,7 +341,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void UpdateRoute(IReadOnlyList<Observation> observations, long now)
     {
-        if (PotNavigationActive) { routeAutomation.ResetInspection(); StopGroundInspection(); return; }
+        if (EventNavigationActive) { routeAutomation.ResetInspection(); StopGroundInspection(); return; }
         UpdateHeadPath(now);
         var groundBlock = GroundInspectionBlock(now);
         var result = routeAutomation.Update(Session, Remaining, observations, Position, now, Config.DisplayMode, Config.AutoAdvanceChests, !IsOccupied, Config.EmptyCheckRadius, groundBlock, preservePlannedStops: true);
@@ -517,6 +518,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     internal void Plan()
     {
+        ReleaseFateNavigation();
         if (!Active) { Message = "請先進入新月島。"; return; }
         if (Config.UseChartRoute) { StartChartRoute(Config.ChartStartNumber); return; }
         routeAutomation.SetPaused(false);
@@ -525,7 +527,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void ResumeWalkingPlan()
     {
-        if (IsPaused || pendingResume is not { } request || PotNavigationActive || IsOccupied) return;
+        if (IsPaused || pendingResume is not { } request || EventNavigationActive || IsOccupied) return;
         if (navigationStatus != "地形導航已就緒")
         {
             // The chart order and map flags are usable even before a navigation mesh is available.
@@ -581,7 +583,7 @@ public sealed partial class Plugin : IDalamudPlugin
             Remaining.Clear(); Remaining.AddRange(result.Route.Stops);
             if (request?.Reconnect != true && request?.Ordered != true) MapRevision++;
             routeRevision = Session.Revision;
-            var flagged = flagAfterPlanning && !PotNavigationActive && !IsOccupied && Remaining.Count > 0 && TryFlag(Remaining[0]);
+            var flagged = flagAfterPlanning && !EventNavigationActive && !IsOccupied && Remaining.Count > 0 && TryFlag(Remaining[0]);
             Message = request?.Ordered == true
                 ? $"圖表順序已保留 {Remaining.Count} 站，已取得 {result.Legs.Count} 條步行路段。" +
                   (result.Unreachable.Count > 0 ? $" {result.Unreachable.Count} 段待確認，站點仍保留，可手動插旗查看。" : "")
@@ -632,6 +634,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     internal void Flag(Spot? spot)
     {
+        ReleaseFateNavigation();
         if (!IsPaused) { pendingResume = null; StopPlanning(); }
         routeAutomation.CancelFlag();
         TryFlag(spot);
@@ -704,6 +707,7 @@ public sealed partial class Plugin : IDalamudPlugin
     internal void Restart()
     {
         if (!Active) { Message = "請先進入新月島。"; return; }
+        ReleaseFateNavigation();
         if (Config.UseChartRoute)
         {
             var first = Remaining.FirstOrDefault(s => Session.CanPatrol(s.Id)) ?? Route.Stops.FirstOrDefault(s => Session.CanPatrol(s.Id));
@@ -745,6 +749,7 @@ public sealed partial class Plugin : IDalamudPlugin
         switch (args.Trim().ToLowerInvariant())
         {
             case "ce": window.OpenCeCooldowns(); return;
+            case "fate": window.OpenFates(); return;
             case "route": Plan(); break;
             case "flag": Flag(Remaining.FirstOrDefault()); break;
             case "next": Next(); break;

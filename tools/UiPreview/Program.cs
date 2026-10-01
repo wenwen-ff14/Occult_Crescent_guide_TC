@@ -103,7 +103,8 @@ unsafe
         void ActionCalled() => actionCount++;
         var actions = new CompassActions(_ => ActionCalled(), _ => ActionCalled(), ActionCalled, _ => ActionCalled(), ActionCalled, ActionCalled,
             SetPotAutoFlag: _ => ActionCalled(), FlagPot: ActionCalled, SetPotFateNotify: _ => ActionCalled(), SetHideOtherPlayers: _ => ActionCalled(),
-            ConfirmOpened: ActionCalled, SetCeTracking: _ => ActionCalled(), ClearCeCooldowns: ActionCalled);
+            ConfirmOpened: ActionCalled, SetCeTracking: _ => ActionCalled(), ClearCeCooldowns: ActionCalled,
+            SetFateAutoFlag: _ => ActionCalled(), ReleaseFateNavigation: ActionCalled, FlagGeneralFate: _ => ActionCalled());
         var ceNow = new DateTimeOffset(2026, 10, 1, 14, 0, 0, TimeSpan.FromHours(8));
         var ceEntries = CeCooldownTracker.Definitions.Select((d, i) => i switch
         {
@@ -115,8 +116,15 @@ unsafe
             _ => new CeCooldownEntry(d, CeStatus.Unknown, 0, null, null, null),
         }).ToArray();
         var ceState = state with { Ce = new CompassCeState(true, new(true, ceEntries), ceNow) };
+        var generalFates = state with { GeneralFates = new(true, true, "已標點：幸福的魔法甕；巡查保留，事件結束或解除後接續。",
+            [new(1976, "幸福的魔法甕", "X 25.5 / Y 17.2", "進度 25% · 剩餘 13:24"),
+             new(1963, "一般 FATE（示範）", "X 20.0 / Y 15.0", "進度 42% · 剩餘 08:25")]) };
         foreach (var scenario in new[]
         {
+            (Name: "general-fates", Width: 960, Height: 900, Scale: 1f, State: generalFates),
+            (Name: "general-fates-compact", Width: 690, Height: 900, Scale: 1f, State: generalFates),
+            (Name: "general-fates-scaled", Width: 1020, Height: 1200, Scale: 1.5f, State: generalFates),
+            (Name: "general-fates-off-island", Width: 690, Height: 900, Scale: 1f, State: generalFates with { Active = false, GeneralFates = new(true, false, "等待進入新月島。", []) }),
             (Name: "ce-cooldowns", Width: 960, Height: 1080, Scale: 1f, State: ceState),
             (Name: "ce-compact", Width: 690, Height: 1000, Scale: 1f, State: ceState),
             (Name: "ce-scaled", Width: 1020, Height: 1380, Scale: 1.5f, State: ceState),
@@ -178,6 +186,7 @@ unsafe
         {
             var view = new CompassView { Page = scenario.Name switch
             {
+                var name when name.StartsWith("general-fates") => CompassPage.Fate,
                 var name when name.StartsWith("ce-") || name == "menu-ce-open" => CompassPage.Ce,
                 var name when name.StartsWith("pot") || name.StartsWith("fate") => CompassPage.Pot,
                 var name when name.StartsWith("exploration") => CompassPage.Exploration,
@@ -190,8 +199,8 @@ unsafe
             io.MousePos = new Vector2(-1000);
             float scrollBefore = 0, scrollAfter = 0;
             var beforeActions = actionCount;
-            CompassPage[] navigation = [CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings, CompassPage.Pot, CompassPage.Patrol];
-            for (var frame = 0; frame < (scenario.Name == "menu-navigation" ? 38 : scenario.Name is "chart-zoomed" or "menu-ce-open" ? 7 : 3); frame++)
+            CompassPage[] navigation = [CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings, CompassPage.Fate, CompassPage.Pot, CompassPage.Patrol];
+            for (var frame = 0; frame < (scenario.Name == "menu-navigation" ? 3 + navigation.Length * 7 : scenario.Name is "chart-zoomed" or "menu-ce-open" ? 7 : 3); frame++)
             {
                 if (scenario.Name == "menu-navigation" && frame >= 3)
                 {
@@ -230,7 +239,7 @@ unsafe
                     if (ImGui.Begin($"新月島尋寶羅盤 · 示範資料##{scenario.Name}", ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse))
                     {
                         view.Draw(scenario.State, actions);
-                        if (view.MenuTargets.Count != 5) throw new InvalidOperationException("All five native menu-bar entries must remain visible.");
+                        if (view.MenuTargets.Count != 6) throw new InvalidOperationException("All six native menu-bar entries must remain visible.");
                         if (view.Page == CompassPage.Ce && view.CeRowsDrawn != 15) throw new InvalidOperationException("CE list must remain accessible before entering the island or receiving observations.");
                         if (frame == 3) scrollBefore = view.PageScroll;
                         if (frame == 6) scrollAfter = view.PageScroll;

@@ -16,6 +16,7 @@ internal sealed record CompassFatePoint(ushort Id, string Name, string Coordinat
 internal sealed record CompassFateState(bool Notify, string Countdown, string NextName, string Detail, IReadOnlyList<CompassFatePoint> Active,
     IReadOnlyList<CompassFatePoint>? Locations = null);
 internal sealed record CompassCeState(bool Enabled, CeCooldownSnapshot Snapshot, DateTimeOffset Now);
+internal sealed record CompassGeneralFates(bool AutoFlag, bool Holding, string Detail, IReadOnlyList<CompassFatePoint> Active);
 internal sealed record CompassViewState(
     bool Active, string Region, Vector3 Position, CompassFilters Filters, bool WorldHints,
     IReadOnlyList<CompassPoint> Points, IReadOnlyList<CompassPoint> Route,
@@ -26,7 +27,7 @@ internal sealed record CompassViewState(
     IReadOnlyList<Spot>? Unreachable = null, bool Transit = false,
     string ExplorationDetail = "等待角色探索紀錄；未讀取前不列入未探索清單。",
     bool HideOtherPlayers = false, string PlayerVisibilityDetail = "只在新月島生效，預設關閉。", CompassRouteControls? Controls = null,
-    CompassCeState? Ce = null, string PluginVersion = "預覽");
+    CompassCeState? Ce = null, string PluginVersion = "預覽", CompassGeneralFates? GeneralFates = null);
 internal sealed record CompassActions(
     Action<CompassFilters> SetFilters, Action<bool> SetWorldHints, Action Plan,
     Action<Spot?> Flag, Action Next, Action Restart,
@@ -36,4 +37,5 @@ internal sealed record CompassActions(
     Action? CancelPlanning = null, Action<bool>? SetHideOtherPlayers = null,
     Action<bool>? SetChartMode = null, Action<int>? SetChartStart = null, Action? ContinueAfterLast = null,
     Action? Pause = null, Action? Resume = null, Action? Stop = null, Action? ConfirmOpened = null,
-    Action<bool>? SetCeTracking = null, Action? ClearCeCooldowns = null);
+    Action<bool>? SetCeTracking = null, Action? ClearCeCooldowns = null,
+    Action<bool>? SetFateAutoFlag = null, Action? ReleaseFateNavigation = null, Action<ushort>? FlagGeneralFate = null);

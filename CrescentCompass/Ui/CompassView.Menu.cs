@@ -5,7 +5,7 @@ using static CrescentCompass.Ui.CompassTheme;
 
 namespace CrescentCompass.Ui;
 
-internal enum CompassPage { Patrol, Pot, Ce, Exploration, Settings }
+internal enum CompassPage { Patrol, Pot, Ce, Exploration, Settings, Fate }
 
 internal sealed partial class CompassView
 {
@@ -18,14 +18,15 @@ internal sealed partial class CompassView
 
     private void DrawNavigation(CompassViewState state, CompassActions actions)
     {
-        string[] labels = ["巡查", "魔法罐", "CE 冷卻", "探索筆記", "設定"];
-        string[] destinations = ["路線與地點", "尋寶與 FATE", "查看冷卻紀錄", "查看島上地點", "顯示與紀錄設定"];
+        string[] labels = ["巡查", "魔法罐", "FATE", "CE 冷卻", "探索筆記", "設定"];
+        string[] destinations = ["路線與地點", "尋寶與 FATE", "事件與自動標點", "查看冷卻與觸發條件", "查看島上地點", "顯示與紀錄設定"];
+        CompassPage[] pages = [CompassPage.Patrol, CompassPage.Pot, CompassPage.Fate, CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings];
         menuTargets.Clear();
         MenuItemTargets.Clear();
         if (!ImGui.BeginMenuBar()) return;
         for (var i = 0; i < labels.Length; i++)
         {
-            var page = (CompassPage)i;
+            var page = pages[i];
             var open = ImGui.BeginMenu(labels[i]);
             menuTargets.Add((page, (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2));
             if (!open) continue;
@@ -46,6 +47,10 @@ internal sealed partial class CompassView
                     break;
                 case CompassPage.Ce:
                     if (ImGui.MenuItem("自動記錄 CE 冷卻", "", state.Ce?.Enabled == true)) actions.SetCeTracking?.Invoke(state.Ce?.Enabled != true);
+                    break;
+                case CompassPage.Fate:
+                    if (ImGui.MenuItem("出現時自動標點", "", state.GeneralFates?.AutoFlag == true)) actions.SetFateAutoFlag?.Invoke(state.GeneralFates?.AutoFlag != true);
+                    if (ImGui.MenuItem("解除本次標點並接續巡查", "", false, state.GeneralFates?.Holding == true)) actions.ReleaseFateNavigation?.Invoke();
                     break;
                 case CompassPage.Exploration:
                     if (ImGui.MenuItem("納入巡查與場景提示", "", state.Filters.Exploration)) actions.SetFilters(state.Filters with { Exploration = !state.Filters.Exploration });
@@ -72,6 +77,7 @@ internal sealed partial class CompassView
         ImGui.SameLine();
         if (ImGui.Button("清除本場 CE 紀錄")) actions.ClearCeCooldowns?.Invoke();
         ImGui.TextWrapped("自動出現約 120 分鐘；打怪觸發約 60 分鐘。從觀測到戰鬥結束時計算，屬社群預估，非伺服器倒數；到期仍需等待事件或觸發條件。");
+        ImGui.TextWrapped("觸發怪物與位置供參考；擊殺數未確認。冷卻結束後仍需符合觸發條件。");
         var available = (state.Active || state.Transit) && state.Region.Contains("南");
         if (!available)
             ImGui.TextWrapped(state.Active ? "目前僅提供已核對的南部 15 個 CE；北部尚未支援。以下為南部清單。" : "進島前也可查看南部 15 個 CE；進入新月島南部後開始記錄，上島前的結束時間未知。");
@@ -99,6 +105,9 @@ internal sealed partial class CompassView
             ImGui.TableNextRow(ImGuiTableRowFlags.None, U(61)); ImGui.TableNextColumn();
             ImGui.TextWrapped(row.Definition.Name);
             ImGui.TextColored(Muted, $"{(row.Definition.MobTriggered ? "打怪觸發" : "自動出現")} · 約 {row.Definition.Cooldown.TotalMinutes:0} 分鐘");
+            ImGui.PushStyleColor(ImGuiCol.Text, Mint);
+            ImGui.TextWrapped(row.Definition.TriggerCondition);
+            ImGui.PopStyleColor();
             ImGui.TableNextColumn();
             ImGui.TextColored(row.Status is CeStatus.Battle or CeStatus.Register or CeStatus.Warmup ? Mint : row.Status == CeStatus.Cooldown ? Carrot : Muted, CeLabel(row, now));
             if (row.Status == CeStatus.Cooldown && row.EligibleAt is { } until) ImGui.TextColored(Muted, $"預估至 {until.ToLocalTime():HH:mm:ss}");

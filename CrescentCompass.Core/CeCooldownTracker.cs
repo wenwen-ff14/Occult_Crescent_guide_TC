@@ -2,9 +2,10 @@ namespace CrescentCompass.Core;
 
 public enum CePhase { Inactive, Register, Warmup, Battle }
 public enum CeStatus { Unknown, Register, Warmup, Battle, ConfirmingEnd, EndUnobserved, Cooldown, Eligible }
-public sealed record CeDefinition(ushort Id, string Name, bool MobTriggered)
+public sealed record CeDefinition(ushort Id, string Name, bool MobTriggered, string? TriggerMob = null, string? TriggerArea = null)
 {
     public TimeSpan Cooldown => TimeSpan.FromMinutes(MobTriggered ? 60 : 120);
+    public string TriggerCondition => MobTriggered ? $"擊倒 {TriggerMob} · 約 {TriggerArea}" : "隨時間自動出現，等待系統刷新";
 }
 public sealed record CeObservation(ushort Id, CePhase Phase, int Progress = 0);
 public sealed record CeCooldownEntry(CeDefinition Definition, CeStatus Status, int Progress,
@@ -20,18 +21,18 @@ public sealed class CeCooldownTracker
     // DynamicEvent 33–47; names checked against the TC client's EXH column 11 (string at offset 0).
     // 60/120 minutes are community estimates, measured here from the observed end.
     public static IReadOnlyList<CeDefinition> Definitions { get; } = Array.AsReadOnly<CeDefinition>([
-        new(33, "腦髓愛好者——奪心魔", true),
+        new(33, "腦髓愛好者——奪心魔", true, "新月鬼魚", "X 26 / Y 33"),
         new(34, "黑色連隊", false),
         new(35, "憤怒的人造人——新月狂戰士", false),
         new(36, "潛影撕裂者——死亡厲爪", false),
-        new(37, "掙脫封印的大妖異——回廊惡魔", true),
+        new(37, "掙脫封印的大妖異——回廊惡魔", true, "新月墨漬", "X 14 / Y 35"),
         new(38, "擬造使魔——水晶龍", false),
-        new(39, "雙極的造物——神秘土偶", true),
+        new(39, "雙極的造物——神秘土偶", true, "新月比布羅斯", "X 5 / Y 25"),
         new(40, "石製騎士團", false),
-        new(41, "傳說中的鯊魚——尼姆瓣齒鯊", true),
-        new(42, "雙足獅人——躍立獅", true),
+        new(41, "傳說中的鯊魚——尼姆瓣齒鯊", true, "新月小瓣齒鯊", "X 19 / Y 6"),
+        new(42, "雙足獅人——躍立獅", true, "新月風扇", "X 35 / Y 21"),
         new(43, "防衛指令", false),
-        new(44, "厭鳥巨獸——進化加魯拉", true),
+        new(44, "厭鳥巨獸——進化加魯拉", true, "新月加魯拉", "X 31 / Y 8"),
         new(45, "販賣詛咒的商販——金錢龜", false),
         new(46, "城塞守衛——復原獅像", false),
         new(47, "昏暗妖魂——鬼火苗", false),

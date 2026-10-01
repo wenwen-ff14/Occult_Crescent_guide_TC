@@ -1,0 +1,8 @@
+CLIENT 2026.09.14.0000.0000
+BNpcName: local TC client names; trigger relationships are separately sourced community data.
+BNpcName 13875: 新月墨漬
+BNpcName 13876: 新月風扇
+BNpcName 13879: 新月鬼魚
+BNpcName 13884: 新月加魯拉
+BNpcName 13895: 新月比布羅斯
+BNpcName 13913: 新月小瓣齒鯊

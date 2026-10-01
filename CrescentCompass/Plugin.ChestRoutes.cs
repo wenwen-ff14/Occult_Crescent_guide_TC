@@ -23,6 +23,7 @@ public sealed partial class Plugin
         if (!Active || Session.Territory != ChestChart.Territory)
         { Message = "這張 68 點圖表只適用新月島南部。"; return; }
         SetChartStart(number);
+        ReleaseFateNavigation();
         var points = ChestChart.Order(catalog, Config.ChartStartNumber)
             .Select(s => Session.Get(s.Id)).OfType<TrackedSpot>()
             .Where(s => Session.CanPatrol(s.Spot.Id)).Select(s => s.Spot).ToArray();
@@ -56,6 +57,7 @@ public sealed partial class Plugin
     internal void ResumeRoute()
     {
         if (!IsPaused || !Active) return;
+        ReleaseFateNavigation();
         routeAutomation.SetPaused(false);
         pendingResume ??= Remaining.Count == 0 ? null : new(Remaining.ToArray(), routePriorities, Config.AutoAdvanceChests, true, Config.UseChartRoute);
         navigationStatus = GroundNavigation.Status();

@@ -24,12 +24,13 @@ internal sealed class MainWindow : Window
             plugin.SetPotAutoFlag, () => plugin.FlagPot(), plugin.RestartPot, plugin.ManualPotHint, plugin.SetAutoAdvance, plugin.SetEmptyCheckRadius, plugin.ClearSurvey,
             plugin.SetPotFateNotify, plugin.FlagPotFate, plugin.FlagPotFateLocation, plugin.CancelPlanning, plugin.SetHideOtherPlayers,
             plugin.SetChartMode, plugin.SetChartStart, plugin.ContinueAfterLastChest, plugin.PauseRoute, plugin.ResumeRoute, plugin.StopRoute, plugin.ConfirmChestOpened,
-            plugin.SetCeTracking, plugin.ClearCeCooldowns);
+            plugin.SetCeTracking, plugin.ClearCeCooldowns, plugin.SetFateAutoFlag, plugin.ReleaseFateNavigation, plugin.FlagGeneralFate);
     }
 
     internal static string KindName(SpotKind kind) => CompassView.KindName(kind);
     internal void OpenSettings() { view.Page = CompassPage.Settings; IsOpen = true; }
     internal void OpenCeCooldowns() { view.Page = CompassPage.Ce; IsOpen = true; }
+    internal void OpenFates() { view.Page = CompassPage.Fate; IsOpen = true; }
 
     public override void Draw()
     {
@@ -63,7 +64,12 @@ internal sealed class MainWindow : Window
             plugin.PatrolSuspended, plugin.ExplorationDetail, config.HideOtherPlayers, plugin.PlayerVisibilityDetail,
             new CompassRouteControls(config.UseChartRoute, config.ChartStartNumber, plugin.IsPaused, plugin.LastChestOpen, chartPoints, plugin.MapRevision),
             new CompassCeState(config.TrackCeCooldowns, plugin.CeCooldowns.Snapshot(now), now),
-            PluginVersion: typeof(Plugin).Assembly.GetName().Version?.ToString(3) ?? "未知版本"), actions);
+            PluginVersion: typeof(Plugin).Assembly.GetName().Version?.ToString(3) ?? "未知版本",
+            GeneralFates: new(config.AutoFlagFates, plugin.FateFlags.OwnsNavigation(now), plugin.FateFlags.Detail,
+                plugin.FateFlags.Active(now).Select(f => new CompassFatePoint(f.Id, f.Name,
+                    Coordinates.IsFinite(f.Position) ? Plugin.MapPosition(new Spot("fate", plugin.Session.Territory, SpotKind.Other, 0, f.Position)) : "座標尚未就緒",
+                    $"{(f.Preparing ? "準備中" : $"進度 {f.Progress}%")}" + (f.EndsAt is { } end ? $" · 剩餘 {Math.Max(0, (int)(end - now).TotalMinutes):00}:{Math.Max(0, (int)(end - now).TotalSeconds) % 60:00}" : ""),
+                    plugin.Active && Coordinates.IsFinite(f.Position))).ToArray())), actions);
     }
 
     private CompassFateState FateState()
@@ -146,7 +152,7 @@ internal sealed class MainWindow : Window
             draw.AddRect(start, end, Pack(Alpha(color, 0.45f)), 5 * scale);
             draw.AddText(start + new Vector2(9, 6) * scale, Pack(color), text);
         }
-        if (!plugin.IsPaused && !plugin.PotNavigationActive && plugin.Remaining.FirstOrDefault() is { } next &&
+        if (!plugin.IsPaused && !plugin.PotNavigationActive && !plugin.FateNavigationActive && plugin.Remaining.FirstOrDefault() is { } next &&
             Plugin.GameGui.WorldToScreen(next.Position + Vector3.UnitY, out var to))
         {
             draw.AddCircle(to, 14 * scale, Pack(Mint), 24, 2 * scale);

@@ -14,7 +14,15 @@ https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/plug
 
 若先前使用 Dev Plugin Locations 載入本機版本，先停用該開發插件並移除其開發路徑，再安裝套件庫版本，避免同時載入兩份。需要地形步行路線時，請另行啟用相容 API 13 的 **vnavmesh**；目標偵測、固定座標與手動插旗可獨立使用。
 
-[下載 0.6.0 安裝包](https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.6.0.0.zip) · [對應版本原始碼](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/tree/v0.6.0) · [原始碼 ZIP](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/archive/refs/tags/v0.6.0.zip)
+[下載 0.6.1 安裝包](https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.6.1.0.zip) · [對應版本原始碼](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/tree/v0.6.1) · [原始碼 ZIP](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/archive/refs/tags/v0.6.1.zip)
+
+## 0.6.1 魔法罐第二處財寶提示修正
+
+- 修正「撒嬌甕似乎能夠告知第二處財寶所在地！」未被辨識，導致搜尋仍停留在第一處財寶的問題。辨識本機確認的 NPC 名稱後，自動切換加碼候選點；互動結束後同步旗標。
+- 修正繁中實際方向「正北／正東／正南／正西」漏判，第二處財寶與一般尋寶都能繼續依提示縮小範圍。保留既有八方向別名。
+- 補齊聖靈藥提示中的 NPC 與「魔法聖靈藥」道具名稱；仍限制系統／NPC 頻道及完整訊息，不接受任意前綴或玩家引述。
+
+已以本機繁中 LogMessage 巨集及名稱表核對，**605 項核心檢查通過**，包含以完整顯示文字驗證「第一箱 → 第二處提示 → 方向 → 第二箱座標 → 自動旗標」流程。遊戲內第二次尋寶仍待實際操作驗收。詳見 [提示查核紀錄](docs/audit/pot-hint-templates.txt)。
 
 ## 0.6.0 圖表 68 點、巡查控制與地圖縮放
 
@@ -181,7 +189,7 @@ https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/plug
 
 ## 安裝本機版本
 
-1. 將 `dist/CrescentCompass-0.6.0-api13.zip` 解壓縮到固定資料夾；保留 DLL、JSON 與相依 DLL 在一起。重載插件後確認視窗上方版本為 **0.6.0**。
+1. 將 `dist/CrescentCompass-0.6.1-api13.zip` 解壓縮到固定資料夾；保留 DLL、JSON 與相依 DLL 在一起。重載插件後確認視窗上方版本為 **0.6.1**。
 2. 遊戲中使用 `/xlsettings`，到實驗性設定的 **Dev Plugin Locations** 加入解壓後 `CrescentCompass.dll` 的完整路徑。
 3. 使用 `/xlplugins`，到 **Dev Tools / Installed Dev Plugins** 啟用「新月島尋寶羅盤」。
 4. 啟用相容 API 13 的 vnavmesh，進入新月島，輸入 `/crescent`，等待「地形導航已就緒」，選擇目標種類並按「規劃巡查路線」。其他偵測與手動旗標功能可獨立使用。

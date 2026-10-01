@@ -178,6 +178,7 @@ Check(potCatalog.Where(c => c.Territory == 1346).Select(c => c.Position).Distinc
 Check(CofferKinds.EventObject(2014741) == SpotKind.PotGold && CofferKinds.EventObject(2014742) == SpotKind.PotSilver && CofferKinds.EventObject(2014743) == SpotKind.PotBronze, "All three pot event coffer grades");
 Check(CofferKinds.EventObject(2012936) == SpotKind.RabbitGold && CofferKinds.EventObject(999) is null, "Rabbit coffer distinct from unrelated events");
 Check(CofferKinds.TreasureModel(1598) == SpotKind.Gold && CofferKinds.TreasureModel(999) == SpotKind.Other, "Gold and future Treasure models not silently omitted");
+PotLocalizedHintChecks.Run(Check);
 foreach (var direction in Enumerable.Range(1, 8))
 {
     var parsed = PotHints.Parse($"財寶好像是在{PotSession.DirectionName(direction)}方向不遠的地方！");

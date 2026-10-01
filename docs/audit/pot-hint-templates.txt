@@ -1,0 +1,23 @@
+Read-only TC client audit, 2026-10-01. Client: 2026.09.14.0000.0000.
+Source: local LogMessage sheet, ReadOnlySeString.ToMacroString().
+Plain ToString() omits the sheet substitutions and switch values below.
+
+10986 channel 57:
+財寶好像是在<switch(lnum1,正北,東北,正東,東南,正南,西南,正西,西北,正北)>方向很近的地方！
+10987 channel 57: same switch, distance 不遠
+10988 channel 57: same switch, distance 稍遠
+10989 channel 57: same switch, distance 很遠
+10990 channel 57:
+<sheet(BNpcName,lnum1,0)>很想要聖靈藥。<br>使用任務道具<sheet(EventItem,lnum2,0)>，<br>探知財寶的氣息吧！
+10994 channel 57:
+<sheet(BNpcName,lnum1,0)>似乎能夠告知第二處財寶所在地！
+
+Referenced sheet values read with RawRow.ReadStringColumn(0):
+BNpcName 13742: 撒嬌甕
+BNpcName 712: 魔法甕
+EventItem 2003296: 魔法聖靈藥
+
+Reproduced before the fix: PotHints.Parse("撒嬌甕似乎能夠告知第二處財寶所在地！") returns null.
+Regression coverage uses rendered strings, then runs the hint queue, bonus candidate transition,
+direction narrowing, observed second coffer and automatic map-flag path.
+Live second-treasure interaction remains to be verified in game.

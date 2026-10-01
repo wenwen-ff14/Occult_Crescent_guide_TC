@@ -3,7 +3,7 @@
     "Author": "CrescentCompass contributors",
     "Name": "CrescentCompass｜新月島尋寶羅盤",
     "InternalName": "CrescentCompass",
-    "AssemblyVersion": "0.6.0.0",
+    "AssemblyVersion": "0.6.1.0",
     "Description": "南部野外 68 個寶箱依使用者提供的圖表固定編號排序，可任選起點、暫停／繼續／終止，依角色儲存上次開箱編號。地圖支援 Ctrl＋滾輪縮放與拖曳平移。圖表順序不被地形導航重排；可另選地形最短順序模式，12 站內求此路程模型下的最短順序，更多點近似最佳化。同島同分流傳送保留路線與手動暫停。含島上 12 處未探索筆記篩選、魔法罐自動提示旗標、北罐／南罐座標、FATE 通知與預估倒數、其他玩家模型隱藏開關。固定候選點不代表個人可開權限；開箱紀錄依本機讀條與物件狀態判定或手動確認。指令 /crescent。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/wenwen-ff14/Occult_Crescent_guide_TC",
@@ -21,17 +21,17 @@
     "LoadPriority": 0,
     "Punchline": "圖表 68 點、任選起點、暫停接續與開箱紀錄",
     "AcceptsFeedback": true,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.6.0.0.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.6.0.0.zip",
-    "DownloadLinkTesting": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.6.0.0.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.6.1.0.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.6.1.0.zip",
+    "DownloadLinkTesting": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.6.1.0.zip",
     "IsHide": false,
     "IsTestingExclusive": false,
-    "LastUpdate": 1790804933,
+    "LastUpdate": 1790829179,
     "ImageUrls": [
       "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/docs/previews/chart-route.png",
       "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/docs/previews/chart-zoomed.png",
       "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/docs/previews/pot.png"
     ],
-    "Changelog": "首次公開發佈 0.6.0：圖表 68 點固定順序、任選起點、暫停／繼續／終止、上次開箱紀錄、Ctrl＋滾輪縮放。包含魔法罐旗標與 FATE 預估倒數、島上探索筆記篩選及玩家模型顯示選項。繁中服 Dalamud API 13。"
+    "Changelog": "修正「撒嬌甕似乎能夠告知第二處財寶所在地！」未切換加碼候選點；修正正北／正東／正南／正西方向漏判，補齊 NPC 與魔法聖靈藥名稱。605 項核心檢查通過。"
   }
 ]

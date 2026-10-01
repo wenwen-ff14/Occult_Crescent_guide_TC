@@ -39,6 +39,7 @@ foreach ($taskName in @('README.md','LICENSE.txt','third-party/NOTICE.md','third
 $taskRuntime['docs/PLAYER_VISIBILITY.md'] = Join-Path $taskRoot 'docs/PLAYER_VISIBILITY.md'
 $taskRuntime['docs/CHEST_CHART.md'] = Join-Path $taskRoot 'docs/CHEST_CHART.md'
 $taskRuntime['docs/audit/chest-chart-mapping.json'] = Join-Path $taskRoot 'docs/audit/chest-chart-mapping.json'
+$taskRuntime['docs/audit/pot-hint-templates.txt'] = Join-Path $taskRoot 'docs/audit/pot-hint-templates.txt'
 $taskRuntime['docs/previews/chart-route.png'] = Join-Path $taskRoot 'docs/previews/chart-route.png'
 $taskRuntime['docs/previews/chart-zoomed.png'] = Join-Path $taskRoot 'docs/previews/chart-zoomed.png'
 $taskRuntime['docs/previews/player-visibility.png'] = Join-Path $taskRoot 'docs/previews/player-visibility.png'

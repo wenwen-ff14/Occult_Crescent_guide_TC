@@ -15,6 +15,7 @@ internal sealed record CompassRouteControls(bool ChartMode, int StartNumber, boo
 internal sealed record CompassFatePoint(ushort Id, string Name, string Coordinates, string Status, bool CanFlag = true);
 internal sealed record CompassFateState(bool Notify, string Countdown, string NextName, string Detail, IReadOnlyList<CompassFatePoint> Active,
     IReadOnlyList<CompassFatePoint>? Locations = null);
+internal sealed record CompassCeState(bool Enabled, CeCooldownSnapshot Snapshot, DateTimeOffset Now);
 internal sealed record CompassViewState(
     bool Active, string Region, Vector3 Position, CompassFilters Filters, bool WorldHints,
     IReadOnlyList<CompassPoint> Points, IReadOnlyList<CompassPoint> Route,
@@ -24,7 +25,8 @@ internal sealed record CompassViewState(
     bool Planning = false, string NavigationDetail = "地形導航已就緒", IReadOnlyList<RouteLeg>? GroundLegs = null,
     IReadOnlyList<Spot>? Unreachable = null, bool Transit = false,
     string ExplorationDetail = "等待角色探索紀錄；未讀取前不列入未探索清單。",
-    bool HideOtherPlayers = false, string PlayerVisibilityDetail = "只在新月島生效，預設關閉。", CompassRouteControls? Controls = null);
+    bool HideOtherPlayers = false, string PlayerVisibilityDetail = "只在新月島生效，預設關閉。", CompassRouteControls? Controls = null,
+    CompassCeState? Ce = null);
 internal sealed record CompassActions(
     Action<CompassFilters> SetFilters, Action<bool> SetWorldHints, Action Plan,
     Action<Spot?> Flag, Action Next, Action Restart,
@@ -33,4 +35,5 @@ internal sealed record CompassActions(
     Action<bool>? SetPotFateNotify = null, Action<ushort>? FlagPotFate = null, Action<ushort>? FlagPotFateLocation = null,
     Action? CancelPlanning = null, Action<bool>? SetHideOtherPlayers = null,
     Action<bool>? SetChartMode = null, Action<int>? SetChartStart = null, Action? ContinueAfterLast = null,
-    Action? Pause = null, Action? Resume = null, Action? Stop = null, Action? ConfirmOpened = null);
+    Action? Pause = null, Action? Resume = null, Action? Stop = null, Action? ConfirmOpened = null,
+    Action<bool>? SetCeTracking = null, Action? ClearCeCooldowns = null);

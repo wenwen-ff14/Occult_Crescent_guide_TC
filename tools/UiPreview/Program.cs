@@ -97,9 +97,33 @@ unsafe
         var chartState = state with { Fates = null, Route = chartPoints.Skip(23).Concat(chartPoints.Take(23)).ToArray(), Points = chartPoints,
             GroundLegs = [], TotalStops = 68, CompletedStops = 0, SkippedStops = 0, Controls = chartControls,
             Message = "從圖表 #24 出發，24 → 68 → 1 → 23。此圖為離線介面預覽，未模擬地形路徑。", NavigationDetail = "地形路段待計算", RouteChanged = false };
-        var actions = new CompassActions(_ => { }, _ => { }, () => { }, _ => { }, () => { }, () => { }, ConfirmOpened: () => { });
+        var actionCount = 0;
+        void ActionCalled() => actionCount++;
+        var actions = new CompassActions(_ => ActionCalled(), _ => ActionCalled(), ActionCalled, _ => ActionCalled(), ActionCalled, ActionCalled,
+            SetPotAutoFlag: _ => ActionCalled(), FlagPot: ActionCalled, SetPotFateNotify: _ => ActionCalled(), SetHideOtherPlayers: _ => ActionCalled(),
+            ConfirmOpened: ActionCalled, SetCeTracking: _ => ActionCalled(), ClearCeCooldowns: ActionCalled);
+        var ceNow = new DateTimeOffset(2026, 10, 1, 14, 0, 0, TimeSpan.FromHours(8));
+        var ceEntries = CeCooldownTracker.Definitions.Select((d, i) => i switch
+        {
+            0 => new CeCooldownEntry(d, CeStatus.Battle, 45, ceNow, null, null),
+            1 => new CeCooldownEntry(d, CeStatus.Register, 0, ceNow, null, null),
+            2 or 4 => new CeCooldownEntry(d, CeStatus.Cooldown, 100, ceNow.AddMinutes(-23), ceNow.AddMinutes(-23), ceNow.AddMinutes(-23) + d.Cooldown),
+            5 => new CeCooldownEntry(d, CeStatus.Eligible, 100, ceNow.AddHours(-3), ceNow.AddHours(-3), ceNow.AddHours(-3) + d.Cooldown),
+            6 => new CeCooldownEntry(d, CeStatus.EndUnobserved, 10, ceNow.AddMinutes(-5), null, null),
+            _ => new CeCooldownEntry(d, CeStatus.Unknown, 0, null, null, null),
+        }).ToArray();
+        var ceState = state with { Ce = new CompassCeState(true, new(true, ceEntries), ceNow) };
         foreach (var scenario in new[]
         {
+            (Name: "ce-cooldowns", Width: 960, Height: 1080, Scale: 1f, State: ceState),
+            (Name: "ce-compact", Width: 690, Height: 1000, Scale: 1f, State: ceState),
+            (Name: "ce-scaled", Width: 1020, Height: 1380, Scale: 1.5f, State: ceState),
+            (Name: "ce-unknown", Width: 690, Height: 1000, Scale: 1f, State: ceState with { Ce = new(true, new CeCooldownTracker().Snapshot(ceNow), ceNow) }),
+            (Name: "ce-transit", Width: 690, Height: 1000, Scale: 1f, State: ceState with { Active = false, Transit = true }),
+            (Name: "ce-disabled", Width: 690, Height: 1000, Scale: 1f, State: ceState with { Ce = ceState.Ce! with { Enabled = false } }),
+            (Name: "ce-north", Width: 690, Height: 740, Scale: 1f, State: ceState with { Region = "新月島北部" }),
+            (Name: "menu-navigation", Width: 960, Height: 1000, Scale: 1f, State: ceState),
+            (Name: "menu-settings", Width: 690, Height: 740, Scale: 1f, State: state),
             (Name: "chart-route", Width: 960, Height: 1300, Scale: 1f, State: chartState),
             (Name: "chart-compact", Width: 690, Height: 1550, Scale: 1f, State: chartState),
             (Name: "chart-scaled", Width: 1400, Height: 2000, Scale: 1.5f, State: chartState),
@@ -148,14 +172,32 @@ unsafe
             (Name: "auto-distance", Width: 690, Height: 1540, Scale: 1f, State: state with { Points = distantRoute, Route = distantRoute, TotalStops = 3, CompletedStops = 0, EmptyCheckRadius = 60, AutomationDetail = "距目標 85 m／判定 60 m，高差 0.0 m／上限 8 m。", Message = "保留巡查紀錄；優先續巡上輪 3 個未巡查點，共 3 站。 已更新首站旗標。" }),
         })
         {
-            var view = new CompassView();
+            var view = new CompassView { Page = scenario.Name switch
+            {
+                var name when name.StartsWith("ce-") => CompassPage.Ce,
+                var name when name.StartsWith("pot") || name.StartsWith("fate") => CompassPage.Pot,
+                var name when name.StartsWith("exploration") => CompassPage.Exploration,
+                var name when name.StartsWith("player-visibility") || name == "menu-settings" => CompassPage.Settings,
+                _ => CompassPage.Patrol,
+            } };
             if (args.Length > 1 && !scenario.Name.StartsWith(args[1], StringComparison.Ordinal)) continue;
             io.FontGlobalScale = scenario.Scale;
             io.DisplaySize = new Vector2(scenario.Width, scenario.Height);
             io.MousePos = new Vector2(-1000);
             float scrollBefore = 0, scrollAfter = 0;
-            for (var frame = 0; frame < (scenario.Name == "chart-zoomed" ? 7 : 3); frame++)
+            var beforeActions = actionCount;
+            CompassPage[] navigation = [CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings, CompassPage.Pot, CompassPage.Patrol];
+            for (var frame = 0; frame < (scenario.Name == "menu-navigation" ? 23 : scenario.Name == "chart-zoomed" ? 7 : 3); frame++)
             {
+                if (scenario.Name == "menu-navigation" && frame >= 3)
+                {
+                    var index = (frame - 3) / 4;
+                    var step = (frame - 3) % 4;
+                    if (step == 0) io.AddMousePosEvent(view.MenuTargets.Single(t => t.Page == navigation[index]).Center.X, view.MenuTargets.Single(t => t.Page == navigation[index]).Center.Y);
+                    if (step == 1) io.AddMouseButtonEvent(0, true);
+                    if (step == 2) io.AddMouseButtonEvent(0, false);
+                    if (step == 3 && view.Page != navigation[index]) throw new InvalidOperationException($"Menu click failed: {navigation[index]}");
+                }
                 if (scenario.Name == "chart-zoomed")
                 {
                     if (frame == 3) io.MousePos = view.MapArea.Origin + view.MapArea.Size * new Vector2(0.65f, 0.55f);
@@ -171,13 +213,15 @@ unsafe
                     if (ImGui.Begin($"新月島尋寶羅盤 · 示範資料##{scenario.Name}", ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse))
                     {
                         view.Draw(scenario.State, actions);
-                        if (frame == 3) scrollBefore = ImGui.GetScrollY();
-                        if (frame == 6) scrollAfter = ImGui.GetScrollY();
+                        if (frame == 3) scrollBefore = view.PageScroll;
+                        if (frame == 6) scrollAfter = view.PageScroll;
                     }
                     ImGui.End();
                 }
                 ImGui.Render();
             }
+            if (scenario.Name == "menu-navigation" && actionCount != beforeActions)
+                throw new InvalidOperationException("Changing feature pages must not change filters, routing, or tracking settings.");
             if (scenario.Name == "chart-zoomed" && (view.MapZoom < 1.5f || MathF.Abs(scrollAfter - scrollBefore) > 0.1f))
                 throw new InvalidOperationException($"Ctrl-wheel must zoom map without scrolling parent: zoom={view.MapZoom}, scroll={scrollBefore}->{scrollAfter}");
             var path = Path.Combine(output, $"{scenario.Name}.png");

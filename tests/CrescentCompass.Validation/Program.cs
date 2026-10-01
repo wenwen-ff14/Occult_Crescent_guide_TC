@@ -242,6 +242,7 @@ ExplorationChecks.Run(Check, exploration);
 PlayerVisibilityChecks.Run(Check);
 PotAutomationChecks.Run(Check);
 PotFateChecks.Run(Check);
+CeCooldownChecks.Run(Check);
 await WalkingRouteChecks.Run(Check);
 PatrolContextChecks.Run(Check);
 await DirectedRouteChecks.Run(Check);

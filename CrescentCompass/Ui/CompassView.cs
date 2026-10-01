@@ -14,6 +14,7 @@ internal sealed partial class CompassView
     private (int Revision, string Region, bool Chart)? mapContext;
     internal (Vector2 Origin, Vector2 Size) MapArea { get; private set; }
     internal float MapZoom => mapViewport.Zoom;
+    internal float PageScroll { get; private set; }
     private static int Completed(CompassViewState state) => state.CompletedStops ?? Math.Max(0, state.TotalStops - state.Route.Count - state.SkippedStops);
     private float U(float value) => value * scale;
     internal static string KindName(SpotKind kind) => kind switch
@@ -40,19 +41,38 @@ internal sealed partial class CompassView
     {
         scale = ImGui.GetFontSize() / 17f;
         DrawHeader(state);
-        var hideOthers = state.HideOtherPlayers;
-        if (ImGui.Checkbox("隱藏非小隊／好友玩家（倒地仍顯示）", ref hideOthers)) actions.SetHideOtherPlayers?.Invoke(hideOthers);
-        HoverHint("僅在新月島隱藏其他玩家模型，保留自己、小隊成員、好友與倒地玩家。復活後若仍不屬於小隊／好友，會重新隱藏。\n預設關閉；關閉、離島、傳送、過場、合照或卸載時，撤回本功能的隱藏設定。只影響本機模型，不修改名字牌、目標選取或其他玩家的畫面。");
-        if (state.HideOtherPlayers) ImGui.TextWrapped(state.PlayerVisibilityDetail);
-        ImGui.Spacing();
-        if (state.Active) DrawFates(state, actions);
-        DrawStats(state);
-        if (state.Active) DrawSurvey(state);
-        DrawRouteControls(state, actions);
-        DrawFilters(state, actions);
-        if (state.Active) { DrawPot(state, actions); DrawJourney(state, actions); DrawLists(state, actions); }
-        else DrawWaiting(state);
-        DrawFooter(state, actions);
+        DrawNavigation();
+        // Independent scroll positions keep the menu visible; changing pages never changes tracking or routes.
+        if (ImGui.BeginChild($"feature-page-{Page}", Vector2.Zero, false))
+        {
+            switch (Page)
+            {
+                case CompassPage.Patrol:
+                    DrawStats(state);
+                    if (state.Active) DrawSurvey(state);
+                    DrawRouteControls(state, actions);
+                    DrawFilters(state, actions);
+                    if (state.Pot?.Active == true) ImGui.TextColored(Carrot, "魔法罐尋寶中 · 詳情與旗標請見「魔法罐」選單");
+                    if (state.Active) { DrawJourney(state, actions); DrawLists(state, actions); }
+                    else DrawWaiting(state);
+                    DrawFooter(state, actions);
+                    break;
+                case CompassPage.Pot:
+                    if (state.Active)
+                    {
+                        DrawFates(state, actions); DrawPot(state, actions);
+                        if (state.Message.Contains("FATE", StringComparison.Ordinal) || state.Message.StartsWith("魔法罐插旗", StringComparison.Ordinal) ||
+                            state.Message.StartsWith("魔法罐旗標", StringComparison.Ordinal)) ImGui.TextWrapped(state.Message);
+                    }
+                    else DrawWaiting(state);
+                    break;
+                case CompassPage.Ce: DrawCeCooldowns(state, actions); break;
+                case CompassPage.Exploration: DrawExplorationPage(state, actions); break;
+                case CompassPage.Settings: DrawSettings(state, actions); break;
+            }
+            PageScroll = ImGui.GetScrollY();
+        }
+        ImGui.EndChild();
     }
 
     private void DrawHeader(CompassViewState state)
@@ -60,7 +80,7 @@ internal sealed partial class CompassView
         var origin = ImGui.GetCursorScreenPos(); var width = ImGui.GetContentRegionAvail().X;
         var draw = ImGui.GetWindowDrawList();
         DrawCompass(draw, origin + new Vector2(U(22), U(24)), U(19), Mint);
-        Label(draw, origin + new Vector2(U(56), 0), "C R E S C E N T   C O M P A S S   ·   0.6.0", Muted, 11);
+        Label(draw, origin + new Vector2(U(56), 0), "C R E S C E N T   C O M P A S S   ·   0.7.0", Muted, 11);
         Label(draw, origin + new Vector2(U(55), U(19)), "新月島尋寶羅盤", Text, 25);
         var status = state.Active ? $"{state.Region}  ·  偵測中" : state.Transit
             ? state.Route.Count > 0 || state.Planning ? "傳送中 · 路線已保留" : "傳送中 · 無進行中路線"
@@ -73,7 +93,6 @@ internal sealed partial class CompassView
     private void DrawFates(CompassViewState state, CompassActions actions)
     {
         if (state.Fates is not { } fates) return;
-        if (state.Controls?.ChartMode == true && !ImGui.CollapsingHeader($"魔法罐 FATE · {fates.Countdown} · 北罐／南罐座標###chart-fates")) return;
         ImGui.PushStyleColor(ImGuiCol.ChildBg, Alpha(Mint, 0.06f));
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(U(14), U(12)));
         var locations = fates.Locations ?? [];
@@ -182,15 +201,7 @@ internal sealed partial class CompassView
         HoverHint("顯示已載入的事件寶箱與其他模型寶箱；不代表所有隱藏寶箱已被揭露。");
         ImGui.SameLine(); if (Chip("塔內／獎勵", filters.Tower, Mint)) filters = filters with { Tower = !filters.Tower };
         HoverHint("包含南區 14 個 BA_treasure 場景候選點。塔內有樓層與機關限制，需自行確認可達性。");
-        ImGui.SameLine(); if (Chip("島上探索筆記", filters.Exploration, KindColor(SpotKind.Exploration))) filters = filters with { Exploration = !filters.Exploration };
-        HoverHint("只包含新月島南部島上 12 處探索地點，排除塔內避世書庫。可單點插旗或規劃巡查，獨立於寶箱顯示範圍。");
-        if (filters.Exploration)
-        {
-            var onlyUnexplored = filters.OnlyUnexplored;
-            if (ImGui.Checkbox("只顯示未探索的筆記地點", ref onlyUnexplored)) filters = filters with { OnlyUnexplored = onlyUnexplored };
-            HoverHint("依目前角色的遊戲內探索紀錄篩選清單、場景提示與路線，每 0.5 秒更新。完成後自動移除該點；首次尚未讀到狀態時暫不顯示。\n取消勾選可查看所有未記為本輪已巡查的固定地點。清除巡查紀錄不會清除遊戲內完成狀態。");
-            ImGui.TextWrapped(state.Transit ? "傳送中，探索紀錄保留；落地後自動更新。" : state.ExplorationDetail);
-        }
+        if (filters.Exploration) ImGui.TextColored(KindColor(SpotKind.Exploration), "已納入島上探索筆記 · 可至「探索筆記」選單調整");
         var mode = (int)filters.DisplayMode;
         ImGui.SetNextItemWidth(U(200));
         if (ImGui.Combo("物件顯示範圍", ref mode, "全島已知位置\0目前可選取\0全島候選巡查\0")) filters = filters with { DisplayMode = (PointDisplayMode)mode };
@@ -217,7 +228,7 @@ internal sealed partial class CompassView
         ImGui.BeginDisabled(state.Controls?.ChartMode == true && !state.Region.Contains("南"));
         if (PrimaryButton(state.Controls?.ChartMode == true ? $"從 #{state.Controls.StartNumber:00} 開始" : state.TotalStops > 0 ? "重新規劃路線" : "規劃巡查路線", new Vector2(U(158), U(34)))) actions.Plan();
         ImGui.SameLine(); if (ImGui.Button("重新巡查", new Vector2(U(106), U(34)))) actions.Restart();
-        HoverHint("保留本場已巡查與略過記錄。圖表模式從上輪未完成的首點接續，維持編號順序；最短模式優先未巡查點。若要全部重跑，使用顯示設定中的清除紀錄。");
+        HoverHint("保留本場已巡查與略過記錄。圖表模式從上輪未完成的首點接續，維持編號順序；最短模式優先未巡查點。若要全部重跑，使用「設定」選單中的清除紀錄。");
         ImGui.EndDisabled(); ImGui.EndDisabled(); ImGui.SameLine(); ImGui.AlignTextToFramePadding(); ImGui.TextColored(Muted, state.Controls?.ChartMode == true ? "保留已巡查紀錄" : "從目前位置出發");
     }
 
@@ -488,13 +499,25 @@ internal sealed partial class CompassView
                     ImGui.PopID();
                 }
         }
-        if (!ImGui.CollapsingHeader("顯示設定與路線說明")) return;
+    }
+
+    private void DrawSettings(CompassViewState state, CompassActions actions)
+    {
+        ImGui.TextColored(Mint, "顯示設定");
+        var hideOthers = state.HideOtherPlayers;
+        if (ImGui.Checkbox("隱藏非小隊／好友玩家（倒地仍顯示）", ref hideOthers)) actions.SetHideOtherPlayers?.Invoke(hideOthers);
+        HoverHint("僅在新月島隱藏其他玩家模型，保留自己、小隊成員、好友與倒地玩家。復活後若仍不屬於小隊／好友，會重新隱藏。\n關閉、離島、傳送、過場、合照或卸載時，撤回本功能的隱藏設定。");
+        ImGui.TextWrapped(state.PlayerVisibilityDetail);
         var hints = state.WorldHints;
         if (ImGui.Checkbox("場景位置提示與下一站標示", ref hints)) actions.SetWorldHints(hints);
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        ImGui.TextColored(Mint, "巡查紀錄");
         ImGui.BeginDisabled(!state.Active);
         if (ImGui.Button("清除巡查紀錄並重排")) actions.ClearSurvey?.Invoke();
         HoverHint("清除手動完成與自動略過紀錄；已確認開啟且未重新出現的箱子仍排除。");
         ImGui.EndDisabled();
+        ImGui.Spacing();
+        if (!ImGui.CollapsingHeader("資料範圍與路線說明")) return;
         ImGui.TextWrapped("全島已知位置只包含本場曾偵測到的物件，不是個人可開寶箱完整清單。候選點與曾看見的位置都需到場確認；數量快照不代表座標已知。");
         ImGui.TextWrapped("探索筆記限島上 12 處，排除塔內避世書庫。未探索篩選依目前角色的遊戲完成狀態；「已巡查」另記本輪手動進度，清除巡查不會重設遊戲紀錄。");
         ImGui.TextWrapped("自動略過代表範圍內連續沒有可用寶箱，不當作已開箱。重新巡查保留紀錄並優先續巡；清除紀錄才會重跑。略過位置重新出現可再規劃。");

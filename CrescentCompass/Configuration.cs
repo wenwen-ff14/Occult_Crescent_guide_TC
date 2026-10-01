@@ -19,6 +19,7 @@ public sealed class Configuration : IPluginConfiguration
     public bool IncludeTower { get; set; } = false;
     public bool AutoFlagPot { get; set; } = true;
     public bool NotifyPotFateSpawn { get; set; } = true;
+    public bool TrackCeCooldowns { get; set; } = true;
     public bool AutoAdvanceChests { get; set; } = true;
     public float EmptyCheckRadius { get; set; } = RouteAutomation.CheckRadius;
     public bool UseChartRoute { get; set; } = true;

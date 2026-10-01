@@ -22,13 +22,16 @@ internal sealed class MainWindow : Window
         actions = new CompassActions(SetFilters, SetWorldHints, plugin.Plan, plugin.Flag, plugin.Next, plugin.Restart,
             plugin.SetPotAutoFlag, () => plugin.FlagPot(), plugin.RestartPot, plugin.ManualPotHint, plugin.SetAutoAdvance, plugin.SetEmptyCheckRadius, plugin.ClearSurvey,
             plugin.SetPotFateNotify, plugin.FlagPotFate, plugin.FlagPotFateLocation, plugin.CancelPlanning, plugin.SetHideOtherPlayers,
-            plugin.SetChartMode, plugin.SetChartStart, plugin.ContinueAfterLastChest, plugin.PauseRoute, plugin.ResumeRoute, plugin.StopRoute, plugin.ConfirmChestOpened);
+            plugin.SetChartMode, plugin.SetChartStart, plugin.ContinueAfterLastChest, plugin.PauseRoute, plugin.ResumeRoute, plugin.StopRoute, plugin.ConfirmChestOpened,
+            plugin.SetCeTracking, plugin.ClearCeCooldowns);
     }
 
     internal static string KindName(SpotKind kind) => CompassView.KindName(kind);
+    internal void OpenSettings() { view.Page = CompassPage.Settings; IsOpen = true; }
 
     public override void Draw()
     {
+        var now = DateTimeOffset.UtcNow;
         var config = plugin.Config;
         CompassPoint Display(TrackedSpot spot) => new(spot.Spot, spot.Status, Plugin.MapPosition(spot.Spot), Vector3.Distance(plugin.Position, spot.Spot.Position), spot.LastSeen, ChartNumber: ChestChart.Number(spot.Spot));
         var chartPoints = plugin.Session.Snapshot().Where(s => ChestChart.Number(s.Spot) is not null).Select(Display).OrderBy(s => s.ChartNumber).ToArray();
@@ -56,7 +59,8 @@ internal sealed class MainWindow : Window
             plugin.IsPlanning, plugin.NavigationDetail, legs,
             plugin.WalkingRoute?.Unreachable.Where(s => plugin.Session.CanPatrol(s.Id)).ToArray(),
             plugin.PatrolSuspended, plugin.ExplorationDetail, config.HideOtherPlayers, plugin.PlayerVisibilityDetail,
-            new CompassRouteControls(config.UseChartRoute, config.ChartStartNumber, plugin.IsPaused, plugin.LastChestOpen, chartPoints, plugin.MapRevision)), actions);
+            new CompassRouteControls(config.UseChartRoute, config.ChartStartNumber, plugin.IsPaused, plugin.LastChestOpen, chartPoints, plugin.MapRevision),
+            new CompassCeState(config.TrackCeCooldowns, plugin.CeCooldowns.Snapshot(now), now)), actions);
     }
 
     private CompassFateState FateState()

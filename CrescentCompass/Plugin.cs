@@ -158,7 +158,7 @@ public sealed partial class Plugin : IDalamudPlugin
         Client.Logout += logoutHandler;
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenMainUi += OpenWindow;
-        PluginInterface.UiBuilder.OpenConfigUi += OpenWindow;
+        PluginInterface.UiBuilder.OpenConfigUi += window.OpenSettings;
         Log.Information($"CrescentCompass {assembly.GetName().Version} loaded; auto-next={Config.AutoAdvanceChests}, empty-radius={Config.EmptyCheckRadius:F0}m, mode={Config.DisplayMode}, pot-auto={Config.AutoFlagPot}, pot-fate-notify={Config.NotifyPotFateSpawn}, hide-players={Config.HideOtherPlayers}");
     }
 
@@ -166,6 +166,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void SuspendPatrol()
     {
+        CeCooldowns.Suspend();
         if (routeSuspended) return;
         routeSuspended = true;
         pendingResume = activeRequest is { } request ? request with { Reconnect = true }
@@ -181,6 +182,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void ResetSession(ushort territory)
     {
+        CeCooldowns.Reset();
         StopPlanning(); StopGroundInspection(); WalkingRoute = null;
         pendingResume = null; routeSuspended = false; routePriorities = new HashSet<string>();
         Session.Reset(territory, catalog);
@@ -219,6 +221,7 @@ public sealed partial class Plugin : IDalamudPlugin
         lastScan = now;
         navigationStatus = GroundNavigation.Status();
         UpdatePotFates(now);
+        UpdateCeCooldowns(now);
         UpdateExploration(now);
         try
         {
@@ -780,7 +783,7 @@ public sealed partial class Plugin : IDalamudPlugin
         Client.Logout -= logoutHandler;
         PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenMainUi -= OpenWindow;
-        PluginInterface.UiBuilder.OpenConfigUi -= OpenWindow;
+        PluginInterface.UiBuilder.OpenConfigUi -= window.OpenSettings;
         Commands.RemoveHandler("/crescent");
         windows.RemoveAllWindows();
     }

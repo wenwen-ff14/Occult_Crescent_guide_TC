@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <DalamudLibPath Condition="'$(DALAMUD_HOME)' == ''">$(MSBuildProjectDirectory)/../.sdk/</DalamudLibPath>
     <AssemblySearchPaths>$(DalamudLibPath);{CandidateAssemblyFiles};{HintPathFromItem};{TargetFrameworkDirectory};{RawFileName}</AssemblySearchPaths>
-    <Version>0.6.1</Version>
+    <Version>0.7.0</Version>
     <Authors>CrescentCompass contributors</Authors>
     <Description>新月島蘿蔔偵測、寶箱巡查路線與地圖旗標</Description>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>

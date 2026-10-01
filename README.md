@@ -14,7 +14,18 @@ https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/plug
 
 若先前使用 Dev Plugin Locations 載入本機版本，先停用該開發插件並移除其開發路徑，再安裝套件庫版本，避免同時載入兩份。需要地形步行路線時，請另行啟用相容 API 13 的 **vnavmesh**；目標偵測、固定座標與手動插旗可獨立使用。
 
-[下載 0.6.1 安裝包](https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.6.1.0.zip) · [對應版本原始碼](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/tree/v0.6.1) · [原始碼 ZIP](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/archive/refs/tags/v0.6.1.zip)
+[下載 0.7.0 安裝包](https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.7.0.0.zip) · [對應版本原始碼](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/tree/v0.7.0) · [原始碼 ZIP](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/archive/refs/tags/v0.7.0.zip)
+
+## 0.7.0 CE 冷卻與功能分類選單
+
+- 新增南部 **15 個 CE** 自動紀錄：報名、準備、戰鬥、上次觀測結束、預估冷卻。打怪觸發類約 60 分鐘、自動出現類約 120 分鐘；由連續觀測到戰鬥結束起算，並非伺服器倒數。到期顯示等待觸發，不假設已刷新。
+- 上島前未觀測到的 CE 顯示未知。傳送保留已知冷卻；若中斷期間錯過結束，不補造時間。離島、換分流、登出、換角色或重載清除本場紀錄；可關閉追蹤或手動清除 CE 紀錄。
+- 現有功能分為 **巡查路線、魔法罐、CE 冷卻、探索筆記、設定** 五個選單，各頁獨立捲動。切頁不停止追蹤、不重設路線；視窗關閉仍會更新。Dalamud 設定按鈕直接開啟設定頁。
+- 玩家隱藏與場景提示移至「設定」；未探索篩選與筆記插旗移至「探索筆記」；魔法罐 FATE 倒數、南北座標與尋寶集中於「魔法罐」。
+
+**644 項核心檢查通過**；API 13 編譯零警告、零錯誤。已驗證 ImGui 五頁點擊不觸發功能操作、Ctrl＋滾輪地圖縮放，並檢視窄版與放大字體預覽。CE 名稱已核對本機繁中遊戲資料；遊戲內事件生命週期與實際冷卻時間仍待驗收。詳見 [CE 冷卻與選單說明](docs/CE_COOLDOWNS.md)。
+
+![CE 冷卻介面（離線示範資料）](docs/previews/ce-cooldowns.png)
 
 ## 0.6.1 魔法罐第二處財寶提示修正
 
@@ -189,7 +200,7 @@ https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/plug
 
 ## 安裝本機版本
 
-1. 將 `dist/CrescentCompass-0.6.1-api13.zip` 解壓縮到固定資料夾；保留 DLL、JSON 與相依 DLL 在一起。重載插件後確認視窗上方版本為 **0.6.1**。
+1. 將 `dist/CrescentCompass-0.7.0-api13.zip` 解壓縮到固定資料夾；保留 DLL、JSON 與相依 DLL 在一起。重載插件後確認視窗上方版本為 **0.7.0**。
 2. 遊戲中使用 `/xlsettings`，到實驗性設定的 **Dev Plugin Locations** 加入解壓後 `CrescentCompass.dll` 的完整路徑。
 3. 使用 `/xlplugins`，到 **Dev Tools / Installed Dev Plugins** 啟用「新月島尋寶羅盤」。
 4. 啟用相容 API 13 的 vnavmesh，進入新月島，輸入 `/crescent`，等待「地形導航已就緒」，選擇目標種類並按「規劃巡查路線」。其他偵測與手動旗標功能可獨立使用。

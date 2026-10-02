@@ -8,7 +8,7 @@ internal sealed partial class CompassView
 {
     private void DrawGeneralFates(CompassViewState state, CompassActions actions)
     {
-        ImGui.TextColored(Mint, "新月島 FATE · 事件與自動標點");
+        ImGui.TextColored(Coral, "新月島 FATE · 事件與自動標點");
         var fates = state.GeneralFates;
         var enabled = fates?.AutoFlag ?? true;
         if (ImGui.Checkbox("FATE 出現時自動標點", ref enabled)) actions.SetFateAutoFlag?.Invoke(enabled);

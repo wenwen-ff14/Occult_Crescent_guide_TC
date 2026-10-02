@@ -66,6 +66,10 @@ The estimated 30-minute alternating schedule is a factual reference from [Wintar
 
 The fixed FATE locations added in 0.4.5 use TC `Fate.Location` -> `planevent.lgb` instance 11191083 / 11264027 for South Horn (Map 967). Only coordinate facts are included. North Horn coordinates come from `GetPotFateData()` in the retained BOCCHI zone source at the pinned commit above, under the same AGPL license; these are not locally validated.
 
+## Waymark format and native interop references (0.9.0)
+
+Public preset field names and ContentFinderCondition mapping were checked against [sourpuh/WaymarkPresetPlugin](https://github.com/sourpuh/WaymarkPresetPlugin/tree/6219d87cb3ceb425efd90351191978aa9d64b87e). Ground-ray material flags and individual-marker flow were researched in [sourpuh/ffxiv_waymarkstudio](https://github.com/sourpuh/ffxiv_waymarkstudio/tree/c1a519419e87a766efc10805a38f02ebcf9fde7f) and FFXIVClientStructs. The implementation, storage format, UI, TC client audit and tests are written for this repository. No upstream plugin binaries or source files are bundled. TC addresses and layout were separately verified against the user's local executable; game files are not redistributed. See `docs/WAYMARKS.md`.
+
 ## Build references
 
 Dalamud, Lumina, ImGui bindings and FFXIVClientStructs are provided by the user's launcher. Copies in `.sdk/` are local compilation references only and must not be included in release or source archives.

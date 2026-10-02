@@ -1,0 +1,35 @@
+{
+  "GameVersion": "2026.09.14.0000.0000",
+  "Sha256": "837B9E2893D45D22C1DDE3D1A134AF2749E0C9FFF6E2EF7246B84860F855E247",
+  "MarkingRva": 43357424,
+  "FrameworkPointerRva": 41389952,
+  "CollisionOffset": 11096,
+  "MarkerOffset": 480,
+  "MarkerStride": 32,
+  "Targets": {
+    "Place": {
+      "Rva": 10540160,
+      "Bytes": "48896C24104889742418574883EC308B"
+    },
+    "Clear": {
+      "Rva": 10540608,
+      "Bytes": "4889742420574883EC308BF2488BF983"
+    },
+    "Raycast": {
+      "Rva": 6029440,
+      "Bytes": "488BC44889580848897010574881EC80"
+    },
+    "MarkingReference": {
+      "Rva": 10984945,
+      "Bytes": "488D0DF8F6ED014C8B85101200008B54"
+    },
+    "FrameworkReference": {
+      "Rva": 13204556,
+      "Bytes": "488B052D13AE01F30F114C24440F57C9"
+    },
+    "CollisionReference": {
+      "Rva": 13204645,
+      "Bytes": "488B88582B000089742428F30F114424"
+    }
+  }
+}

@@ -5,7 +5,7 @@ using static CrescentCompass.Ui.CompassTheme;
 
 namespace CrescentCompass.Ui;
 
-internal enum CompassPage { Patrol, Pot, Ce, Exploration, Settings, Fate }
+internal enum CompassPage { Patrol, Pot, Ce, Exploration, Settings, Fate, Waymarks }
 
 internal sealed partial class CompassView
 {
@@ -18,16 +18,27 @@ internal sealed partial class CompassView
 
     private void DrawNavigation(CompassViewState state, CompassActions actions)
     {
-        string[] labels = ["巡查", "魔法罐", "FATE", "CE 冷卻", "探索筆記", "設定"];
-        string[] destinations = ["路線與地點", "尋寶與 FATE", "事件與自動標點", "查看冷卻與觸發條件", "查看島上地點", "顯示與紀錄設定"];
-        CompassPage[] pages = [CompassPage.Patrol, CompassPage.Pot, CompassPage.Fate, CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings];
+        string[] labels = ["巡查", "魔法罐", "FATE", "CE 冷卻", "探索筆記", "標點", "設定"];
+        string[] destinations = ["路線與地點", "尋寶與 FATE", "事件與自動標點", "查看冷卻與觸發條件", "查看島上地點", "儲存、匯入與還原", "顯示與紀錄設定"];
+        CompassPage[] pages = [CompassPage.Patrol, CompassPage.Pot, CompassPage.Fate, CompassPage.Ce, CompassPage.Exploration, CompassPage.Waymarks, CompassPage.Settings];
         menuTargets.Clear();
         MenuItemTargets.Clear();
         if (!ImGui.BeginMenuBar()) return;
         for (var i = 0; i < labels.Length; i++)
         {
             var page = pages[i];
+            var selected = Page == page;
+            var menuDraw = ImGui.GetWindowDrawList();
+            var menuAccent = Destinations.Single(d => d.Page == page).Color;
+            ImGui.PushStyleColor(ImGuiCol.Text, menuAccent);
             var open = ImGui.BeginMenu(labels[i]);
+            ImGui.PopStyleColor();
+            if (selected)
+            {
+                var min = ImGui.GetItemRectMin(); var max = ImGui.GetItemRectMax();
+                menuDraw.AddLine(new Vector2(min.X + U(5), max.Y - U(2)),
+                    new Vector2(max.X - U(5), max.Y - U(2)), Pack(menuAccent), U(3));
+            }
             menuTargets.Add((page, (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2));
             if (!open) continue;
             if (ImGui.MenuItem(destinations[i], "", Page == page)) Page = page;
@@ -60,6 +71,9 @@ internal sealed partial class CompassView
                     if (ImGui.MenuItem("場景位置提示", "", state.WorldHints)) actions.SetWorldHints(!state.WorldHints);
                     if (ImGui.MenuItem("隱藏其他玩家（保留倒地者）", "", state.HideOtherPlayers)) actions.SetHideOtherPlayers?.Invoke(!state.HideOtherPlayers);
                     break;
+                case CompassPage.Waymarks:
+                    if (ImGui.MenuItem("取消放置標點", "", false, state.Waymarks?.Busy == true)) actions.Waymarks?.Cancel();
+                    break;
             }
             ImGui.EndMenu();
         }
@@ -69,7 +83,7 @@ internal sealed partial class CompassView
     private void DrawCeCooldowns(CompassViewState state, CompassActions actions)
     {
         CeRowsDrawn = 0;
-        ImGui.TextColored(Mint, "危命任務 · 本場冷卻紀錄");
+        ImGui.TextColored(Sky, "危命任務 · 本場冷卻紀錄");
         var ce = state.Ce;
         var enabled = ce?.Enabled ?? true;
         if (ImGui.Checkbox("自動記錄 CE 冷卻", ref enabled)) actions.SetCeTracking?.Invoke(enabled);

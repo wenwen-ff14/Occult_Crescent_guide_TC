@@ -142,11 +142,12 @@ public sealed partial class Plugin : IDalamudPlugin
             using var stream = assembly.GetManifestResourceStream(name)!;
             potCatalog.AddRange(PotCatalog.Load(stream));
         }
+        waymarks = new WaymarkLibrary(Path.Combine(PluginInterface.GetPluginConfigDirectory(), "waymarks.json"));
         window = new MainWindow(this);
         windows.AddWindow(window);
         Commands.AddHandler("/crescent", new CommandInfo(OnCommand)
         {
-            HelpMessage = "新月島尋寶羅盤。ce 冷卻與觸發條件，fate 事件與自動標點，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 下一站旗標，pot 魔法罐搜尋點，next 已巡查，reset 續巡，clear 清除巡查重排。",
+            HelpMessage = "新月島尋寶羅盤。waymarks 儲存與匯入標點，ce 冷卻與觸發條件，fate 事件與自動標點，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 下一站旗標，pot 魔法罐搜尋點，next 已巡查，reset 續巡，clear 清除巡查重排。",
         });
         Framework.Update += Update;
         Chat.ChatMessage += OnChatMessage;
@@ -154,7 +155,7 @@ public sealed partial class Plugin : IDalamudPlugin
         Toasts.QuestToast += OnQuestToast;
         Toasts.ErrorToast += OnErrorToast;
         Client.TerritoryChanged += TerritoryChanged;
-        logoutHandler = (_, _) => { patrolContext.Logout(); ResetSession(0); PotFates.Reset(); };
+        logoutHandler = (_, _) => { CancelWaymarks("已登出，停止標點還原。"); patrolContext.Logout(); ResetSession(0); PotFates.Reset(); };
         Client.Logout += logoutHandler;
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenMainUi += OpenWindow;
@@ -162,7 +163,7 @@ public sealed partial class Plugin : IDalamudPlugin
         Log.Information($"CrescentCompass {assembly.GetName().Version} loaded; auto-next={Config.AutoAdvanceChests}, empty-radius={Config.EmptyCheckRadius:F0}m, mode={Config.DisplayMode}, pot-auto={Config.AutoFlagPot}, pot-fate-notify={Config.NotifyPotFateSpawn}, fate-auto={Config.AutoFlagFates}, hide-players={Config.HideOtherPlayers}");
     }
 
-    private void TerritoryChanged(ushort _) { patrolContext.Suspend(); SuspendPatrol(); }
+    private void TerritoryChanged(ushort _) { CancelWaymarks("區域切換，停止標點還原。"); patrolContext.Suspend(); SuspendPatrol(); }
 
     private void SuspendPatrol()
     {
@@ -183,6 +184,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void ResetSession(ushort territory)
     {
+        autoChestOpener.Reset();
         FateFlags.Reset(); fateNavigationWasActive = false;
         CeCooldowns.Reset();
         StopPlanning(); StopGroundInspection(); WalkingRoute = null;
@@ -202,6 +204,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void Update(IFramework _)
     {
+        UpdateWaymarks();
         if (retryPlayerVisibility) { retryPlayerVisibility = false; playerVisibility.Retry(); }
         // Must run before the patrol's loading/territory early returns so island exits also restore models.
         playerVisibility.Update(Config.HideOtherPlayers && PlayerVisibilityActive);
@@ -239,6 +242,7 @@ public sealed partial class Plugin : IDalamudPlugin
             Session.Observe(observations, time);
             if (chestOpenTracker.Update(catalog, observations, Position, player.IsCasting ? player.CastTargetObjectId : 0, now, time) is { } opened)
                 SaveChestProgress(opened);
+            UpdateAutoChests(observations, now);
             potAutomation.Update(Pot, Config.AutoFlagPot, !IsOccupied, now, FlagPot);
             UpdateFateNavigation();
             ResumeWalkingPlan();
@@ -750,6 +754,8 @@ public sealed partial class Plugin : IDalamudPlugin
         {
             case "ce": window.OpenCeCooldowns(); return;
             case "fate": window.OpenFates(); return;
+            case "waymark":
+            case "waymarks": window.OpenWaymarks(); return;
             case "route": Plan(); break;
             case "flag": Flag(Remaining.FirstOrDefault()); break;
             case "next": Next(); break;
@@ -774,6 +780,7 @@ public sealed partial class Plugin : IDalamudPlugin
     public void Dispose()
     {
         disposed = true;
+        CancelWaymarks("插件已卸載，停止標點還原。");
         StopPlanning(); StopGroundInspection();
         Framework.Update -= Update;
         if (playerVisibility.HiddenCount > 0 && !Framework.IsFrameworkUnloading)

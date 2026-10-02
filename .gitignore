@@ -3,6 +3,7 @@
 .sdk/
 .vs/
 dist/
+artifacts/
 .references/
 *.user
 *.suo

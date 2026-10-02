@@ -43,6 +43,12 @@ $taskRuntime['docs/previews/ce-cooldowns.png'] = Join-Path $taskRoot 'docs/previ
 $taskRuntime['docs/previews/menu-settings.png'] = Join-Path $taskRoot 'docs/previews/menu-settings.png'
 $taskRuntime['docs/previews/menu-ce-open.png'] = Join-Path $taskRoot 'docs/previews/menu-ce-open.png'
 $taskRuntime['docs/FATE_AUTO_FLAGS.md'] = Join-Path $taskRoot 'docs/FATE_AUTO_FLAGS.md'
+$taskRuntime['docs/WAYMARKS.md'] = Join-Path $taskRoot 'docs/WAYMARKS.md'
+$taskRuntime['docs/AUTO_CHESTS.md'] = Join-Path $taskRoot 'docs/AUTO_CHESTS.md'
+$taskRuntime['docs/previews/auto-chests-settings.png'] = Join-Path $taskRoot 'docs/previews/auto-chests-settings.png'
+$taskRuntime['docs/previews/waymarks.png'] = Join-Path $taskRoot 'docs/previews/waymarks.png'
+$taskRuntime['docs/previews/waymarks-import.png'] = Join-Path $taskRoot 'docs/previews/waymarks-import.png'
+$taskRuntime['docs/previews/waymarks-distance.png'] = Join-Path $taskRoot 'docs/previews/waymarks-distance.png'
 $taskRuntime['docs/previews/general-fates.png'] = Join-Path $taskRoot 'docs/previews/general-fates.png'
 $taskRuntime['docs/audit/ce-trigger-names.txt'] = Join-Path $taskRoot 'docs/audit/ce-trigger-names.txt'
 $taskRuntime['docs/audit/chest-chart-mapping.json'] = Join-Path $taskRoot 'docs/audit/chest-chart-mapping.json'
@@ -50,6 +56,12 @@ $taskRuntime['docs/audit/pot-hint-templates.txt'] = Join-Path $taskRoot 'docs/au
 $taskRuntime['docs/previews/chart-route.png'] = Join-Path $taskRoot 'docs/previews/chart-route.png'
 $taskRuntime['docs/previews/chart-zoomed.png'] = Join-Path $taskRoot 'docs/previews/chart-zoomed.png'
 $taskRuntime['docs/previews/player-visibility.png'] = Join-Path $taskRoot 'docs/previews/player-visibility.png'
+foreach ($taskName in @('USER_GUIDE.md','BUILDING.md','CHANGELOG.md','docs/README.md','docs/previews/cards-navigation.png','docs/previews/cards-navigation-scaled.png')) {
+    $taskRuntime[$taskName] = Join-Path $taskRoot $taskName
+}
+foreach ($taskFile in $taskRuntime.Values) {
+    if (!(Test-Path -LiteralPath $taskFile -PathType Leaf)) { throw "Missing package input: $taskFile" }
+}
 Write-TaskArchive (Join-Path $taskDist "CrescentCompass-$Version-api13.zip") $taskRuntime
 
 $taskSources = [ordered]@{}
@@ -58,7 +70,7 @@ foreach ($taskDirectory in @('CrescentCompass','CrescentCompass.Core','tests','t
         Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
         ForEach-Object { $taskSources[[System.IO.Path]::GetRelativePath($taskRoot, $_.FullName).Replace('\','/')] = $_.FullName }
 }
-foreach ($taskName in @('README.md','LICENSE.txt','global.json','.gitignore','.gitattributes')) { $taskSources[$taskName] = Join-Path $taskRoot $taskName }
+foreach ($taskName in @('README.md','USER_GUIDE.md','BUILDING.md','CHANGELOG.md','LICENSE.txt','global.json','.gitignore','.gitattributes')) { $taskSources[$taskName] = Join-Path $taskRoot $taskName }
 if (Test-Path -LiteralPath (Join-Path $taskRoot 'pluginmaster.json')) { $taskSources['pluginmaster.json'] = Join-Path $taskRoot 'pluginmaster.json' }
 Write-TaskArchive (Join-Path $taskDist "CrescentCompass-$Version-source.zip") $taskSources
 Get-ChildItem -LiteralPath $taskDist -Filter "CrescentCompass-$Version-*.zip" | Get-FileHash -Algorithm SHA256 | Format-Table -AutoSize

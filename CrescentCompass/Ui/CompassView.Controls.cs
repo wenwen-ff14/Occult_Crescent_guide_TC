@@ -33,10 +33,10 @@ internal sealed partial class CompassView
         HoverHint("依角色儲存，可跨重啟查看。自動判定需捕捉到自己對該箱讀條，再確認同一箱已開啟；不是伺服器領取紀錄，缺少證據時可手動確認。空點略過、只經過或單獨看到箱子已開不寫入。");
         ImGui.BeginDisabled(!state.Active && !state.Transit || state.Route.Count == 0 && !state.Planning);
         ImGui.BeginDisabled(control.Paused && !state.Active);
-        if (ImGui.Button(control.Paused ? "繼續巡查" : "暫停巡查", new Vector2(U(120), U(32))))
+        if (ToneButton(control.Paused ? "繼續巡查" : "暫停巡查", new Vector2(U(120), U(32)), control.Paused ? Mint : Gold))
         { if (control.Paused) actions.Resume?.Invoke(); else actions.Pause?.Invoke(); }
         ImGui.EndDisabled(); ImGui.SameLine();
-        if (ImGui.Button("終止巡查", new Vector2(U(120), U(32)))) actions.Stop?.Invoke();
+        if (ToneButton("終止巡查", new Vector2(U(120), U(32)), Coral)) actions.Stop?.Invoke();
         ImGui.EndDisabled();
         ImGui.SameLine(); ImGui.AlignTextToFramePadding();
         ImGui.TextColored(control.Paused ? Carrot : Muted, control.Paused ? "已暫停" : state.Planning ? "計算路段中" : state.Route.Count > 0 ? "巡查中" : "尚未開始");

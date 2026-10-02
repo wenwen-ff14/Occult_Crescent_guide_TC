@@ -7,7 +7,7 @@ using HexaGen.Runtime;
 
 unsafe
 {
-    var output = Path.GetFullPath(args.FirstOrDefault() ?? "docs/previews");
+    var output = Path.GetFullPath(args.FirstOrDefault() ?? Path.Combine(AppContext.BaseDirectory, "../../../../../artifacts/ui-preview"));
     Directory.CreateDirectory(output);
     using var native = new NativeLibraryContext(Path.Combine(AppContext.BaseDirectory, "cimgui.dll"));
     ImGui.InitApi(native);
@@ -100,11 +100,29 @@ unsafe
             GroundLegs = [], TotalStops = 68, CompletedStops = 0, SkippedStops = 0, Controls = chartControls,
             Message = "從圖表 #24 出發，24 → 68 → 1 → 23。此圖為離線介面預覽，未模擬地形路徑。", NavigationDetail = "地形路段待計算", RouteChanged = false };
         var actionCount = 0;
+        var waymarkCalls = new List<string>();
+        string importedWaymarks = "";
+        Guid lastPlacedWaymark = Guid.Empty;
+        bool? ignoreDistanceSetting = null;
+        bool? autoChestSetting = null;
+        List<bool> autoChestCalls = [];
         void ActionCalled() => actionCount++;
         var actions = new CompassActions(_ => ActionCalled(), _ => ActionCalled(), ActionCalled, _ => ActionCalled(), ActionCalled, ActionCalled,
             SetPotAutoFlag: _ => ActionCalled(), FlagPot: ActionCalled, SetPotFateNotify: _ => ActionCalled(), SetHideOtherPlayers: _ => ActionCalled(),
             ConfirmOpened: ActionCalled, SetCeTracking: _ => ActionCalled(), ClearCeCooldowns: ActionCalled,
-            SetFateAutoFlag: _ => ActionCalled(), ReleaseFateNavigation: ActionCalled, FlagGeneralFate: _ => ActionCalled());
+            SetFateAutoFlag: _ => ActionCalled(), ReleaseFateNavigation: ActionCalled, FlagGeneralFate: _ => ActionCalled(),
+            Waymarks: new(_ => { ActionCalled(); waymarkCalls.Add("save"); }, (json, _) => { ActionCalled(); importedWaymarks = json; waymarkCalls.Add("import"); },
+                id => { ActionCalled(); lastPlacedWaymark = id; waymarkCalls.Add("place"); }, _ => { ActionCalled(); waymarkCalls.Add("delete"); },
+                (_, _) => ActionCalled(), _ => null, () => { ActionCalled(); waymarkCalls.Add("cancel"); },
+                value => { ActionCalled(); ignoreDistanceSetting = value; waymarkCalls.Add(value ? "distance-on" : "distance-off"); }),
+            SetAutoOpenNearbyChests: value => { ActionCalled(); autoChestSetting = value; autoChestCalls.Add(value); });
+        var demoWaymark = new WaymarkPreset(Guid.NewGuid(), "南部 · 戰鬥集合點（示範）", 1252,
+            new DateTimeOffset(2026, 10, 3, 18, 25, 0, TimeSpan.FromHours(8)),
+            Enumerable.Range(0, 8).Select(i => new SavedWaymark(120 + i * 2, 5, -240 + i * 3, i < 6)).ToArray());
+        var waymarkState = state with { Waymarks = new([demoWaymark, demoWaymark with { Id = Guid.NewGuid(), Name = "塔內 · 一樓（示範）" }],
+            true, true, false, "示範資料 · 選擇預設後按「放置標點」。") };
+        var unchangedPlacement = new WaymarkPlacement();
+        unchangedPlacement.Start(demoWaymark, demoWaymark.Markers.ToArray(), new(1252, 1, 1, true, false), 0);
         var ceNow = new DateTimeOffset(2026, 10, 1, 14, 0, 0, TimeSpan.FromHours(8));
         var ceEntries = CeCooldownTracker.Definitions.Select((d, i) => i switch
         {
@@ -121,6 +139,33 @@ unsafe
              new(1963, "一般 FATE（示範）", "X 20.0 / Y 15.0", "進度 42% · 剩餘 08:25")]) };
         foreach (var scenario in new[]
         {
+            (Name: "auto-chests-settings", Width: 690, Height: 740, Scale: 1f, State: state with {
+                AutoOpenNearbyChests = true, AutoChestDetail = "偵測中；請靠近可開啟的寶箱（3 公尺內）。" }),
+            (Name: "auto-chests-patrol", Width: 960, Height: 1100, Scale: 1f, State: chartState with {
+                AutoOpenNearbyChests = true, AutoChestDetail = "已嘗試開啟附近寶箱（1/3）；等待遊戲確認。" }),
+            (Name: "auto-chests-toggle", Width: 690, Height: 740, Scale: 1f, State: state),
+            (Name: "auto-chests-paused", Width: 690, Height: 740, Scale: 1f, State: state with {
+                AutoOpenNearbyChests = true, AutoChestDetail = "戰鬥中，暫停開箱。" }),
+            (Name: "auto-chests-scaled", Width: 1020, Height: 1000, Scale: 1.5f, State: state with {
+                AutoOpenNearbyChests = true, AutoChestDetail = "附近寶箱已達 3 次嘗試上限；可手動開啟，或離開 6 公尺再靠近。" }),
+            (Name: "waymarks", Width: 960, Height: 940, Scale: 1f, State: waymarkState),
+            (Name: "waymarks-compact", Width: 690, Height: 740, Scale: 1f, State: waymarkState),
+            (Name: "waymarks-scaled", Width: 1020, Height: 1200, Scale: 1.5f, State: waymarkState),
+            (Name: "waymarks-off-island", Width: 960, Height: 1000, Scale: 1f, State: waymarkState with { Active = false, Waymarks = waymarkState.Waymarks! with { CanCapture = false, CanPlace = false } }),
+            (Name: "waymarks-empty", Width: 690, Height: 740, Scale: 1f, State: waymarkState with { Waymarks = waymarkState.Waymarks! with { Presets = [] } }),
+            (Name: "waymarks-distance", Width: 690, Height: 950, Scale: 1f, State: waymarkState with { Waymarks = waymarkState.Waymarks! with {
+                Presets = [demoWaymark], IgnoreDistance = true, Detail = "已啟用忽略距離；依預設 XYZ 放置，不校正地面高度。" } }),
+            (Name: "waymarks-distance-toggle", Width: 960, Height: 1100, Scale: 1f, State: waymarkState),
+            (Name: "waymarks-placement-error", Width: 690, Height: 850, Scale: 1f, State: waymarkState with { Waymarks = waymarkState.Waymarks! with {
+                Presets = [demoWaymark], Failed = true, Detail = "標點 A：標點距離超過 200 公尺，請靠近預設位置再套用。" } }),
+            (Name: "waymarks-unchanged", Width: 690, Height: 850, Scale: 1f, State: waymarkState with { Waymarks = waymarkState.Waymarks! with {
+                Presets = [demoWaymark], Detail = unchangedPlacement.Detail } }),
+            (Name: "waymarks-combat", Width: 690, Height: 850, Scale: 1f, State: waymarkState with { Waymarks = waymarkState.Waymarks! with {
+                Presets = [demoWaymark], CanPlace = false, PlacementUnavailableReason = "目前在戰鬥中，結束戰鬥後才能放置標點。" } }),
+            (Name: "waymarks-button-check", Width: 960, Height: 1000, Scale: 1f, State: waymarkState),
+            (Name: "waymarks-select-new", Width: 960, Height: 1000, Scale: 1f, State: waymarkState),
+            (Name: "waymarks-import-check", Width: 960, Height: 1000, Scale: 1f, State: waymarkState),
+            (Name: "waymarks-cancel-check", Width: 960, Height: 1000, Scale: 1f, State: waymarkState with { Waymarks = waymarkState.Waymarks! with { CanCapture = false, CanPlace = false, Busy = true, Detail = "正在放置標點 B · 1／6" } }),
             (Name: "general-fates", Width: 960, Height: 900, Scale: 1f, State: generalFates),
             (Name: "general-fates-compact", Width: 690, Height: 900, Scale: 1f, State: generalFates),
             (Name: "general-fates-scaled", Width: 1020, Height: 1200, Scale: 1.5f, State: generalFates),
@@ -134,6 +179,8 @@ unsafe
             (Name: "ce-north", Width: 690, Height: 740, Scale: 1f, State: ceState with { Region = "新月島北部" }),
             (Name: "ce-off-island", Width: 690, Height: 740, Scale: 1f, State: ceState with { Active = false }),
             (Name: "menu-navigation", Width: 960, Height: 1000, Scale: 1f, State: ceState),
+            (Name: "cards-navigation", Width: 690, Height: 1000, Scale: 1f, State: ceState),
+            (Name: "cards-navigation-scaled", Width: 1020, Height: 1200, Scale: 1.35f, State: ceState),
             (Name: "menu-ce-open", Width: 690, Height: 1000, Scale: 1f, State: ceState),
             (Name: "menu-settings", Width: 690, Height: 740, Scale: 1f, State: state),
             (Name: "chart-route", Width: 960, Height: 1300, Scale: 1f, State: chartState),
@@ -186,6 +233,8 @@ unsafe
         {
             var view = new CompassView { Page = scenario.Name switch
             {
+                var name when name.StartsWith("waymarks") => CompassPage.Waymarks,
+                var name when name.StartsWith("auto-chests") && name != "auto-chests-patrol" => CompassPage.Settings,
                 var name when name.StartsWith("general-fates") => CompassPage.Fate,
                 var name when name.StartsWith("ce-") || name == "menu-ce-open" => CompassPage.Ce,
                 var name when name.StartsWith("pot") || name.StartsWith("fate") => CompassPage.Pot,
@@ -199,9 +248,40 @@ unsafe
             io.MousePos = new Vector2(-1000);
             float scrollBefore = 0, scrollAfter = 0;
             var beforeActions = actionCount;
-            CompassPage[] navigation = [CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings, CompassPage.Fate, CompassPage.Pot, CompassPage.Patrol];
-            for (var frame = 0; frame < (scenario.Name == "menu-navigation" ? 3 + navigation.Length * 7 : scenario.Name is "chart-zoomed" or "menu-ce-open" ? 7 : 3); frame++)
+            waymarkCalls.Clear();
+            ignoreDistanceSetting = null;
+            autoChestSetting = null; autoChestCalls.Clear();
+            string[] clicks = scenario.Name switch { "waymarks-button-check" => ["save", "place", "delete", "delete-confirm"],
+                "waymarks-off-island" => ["save", "place"], "waymarks-empty" => ["import"], "waymarks-combat" => ["place"], "waymarks-cancel-check" => ["cancel"],
+                "waymarks-import-check" => ["import-header", "json", "import"], _ => [] };
+            if (scenario.Name == "waymarks-select-new") clicks = ["save", "place", "preset-" + demoWaymark.Id, "place"];
+            if (scenario.Name == "waymarks-distance-toggle") clicks = ["ignore-distance", "place", "ignore-distance"];
+            if (scenario.Name == "waymarks-cancel-check") clicks = ["ignore-distance", "cancel"];
+            if (scenario.Name == "auto-chests-toggle") clicks = ["auto-chest", "auto-chest"];
+            CompassPage[] navigation = [CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings, CompassPage.Fate, CompassPage.Pot, CompassPage.Waymarks, CompassPage.Patrol];
+            for (var frame = 0; frame < (clicks.Length > 0 ? 3 + clicks.Length * 4 : scenario.Name.StartsWith("cards-navigation") ? 3 + navigation.Length * 4 : scenario.Name == "menu-navigation" ? 3 + navigation.Length * 7 : scenario.Name is "chart-zoomed" or "menu-ce-open" ? 7 : 3); frame++)
             {
+                if (scenario.Name.StartsWith("cards-navigation") && frame >= 3)
+                {
+                    var index = (frame - 3) / 4; var step = (frame - 3) % 4;
+                    if (step == 0)
+                    {
+                        var target = view.PageTargets[navigation[index]];
+                        if (target.X <= 20 || target.X >= scenario.Width - 20) throw new InvalidOperationException("Navigation cards must fit the window.");
+                        io.AddMousePosEvent(target.X, target.Y);
+                    }
+                    if (step == 1) io.AddMouseButtonEvent(0, true);
+                    if (step == 2) io.AddMouseButtonEvent(0, false);
+                    if (step == 3 && view.Page != navigation[index]) throw new InvalidOperationException($"Direct page navigation failed: {navigation[index]}");
+                }
+                if (clicks.Length > 0 && frame >= 3)
+                {
+                    var index = (frame - 3) / 4; var step = (frame - 3) % 4;
+                    if (step == 0) { var target = clicks[index] == "auto-chest" ? view.AutoChestToggleTarget : view.WaymarkTargets[clicks[index]]; io.AddMousePosEvent(target.X, target.Y); }
+                    if (step == 1) io.AddMouseButtonEvent(0, true);
+                    if (step == 2) io.AddMouseButtonEvent(0, false);
+                    if (step == 3 && clicks[index] == "json") foreach (char ch in demoWaymark.Export()) io.AddInputCharacter(ch);
+                }
                 if (scenario.Name == "menu-navigation" && frame >= 3)
                 {
                     var index = (frame - 3) / 7;
@@ -238,8 +318,17 @@ unsafe
                     ImGui.SetNextWindowSize(new Vector2(scenario.Width - 40, scenario.Height - 40));
                     if (ImGui.Begin($"新月島尋寶羅盤 · 示範資料##{scenario.Name}", ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse))
                     {
-                        view.Draw(scenario.State, actions);
-                        if (view.MenuTargets.Count != 6) throw new InvalidOperationException("All six native menu-bar entries must remain visible.");
+                        var frameState = scenario.State;
+                        if (autoChestSetting is { } autoSetting) frameState = frameState with { AutoOpenNearbyChests = autoSetting };
+                        if (ignoreDistanceSetting is { } setting && frameState.Waymarks is { } markState)
+                            frameState = frameState with { Waymarks = markState with { IgnoreDistance = setting } };
+                        if (scenario.Name == "waymarks-select-new" && waymarkCalls.Contains("save"))
+                            frameState = frameState with { Waymarks = frameState.Waymarks! with {
+                                SelectionRequest = frameState.Waymarks.Presets[1].Id, SelectionRevision = 1 } };
+                        view.Draw(frameState, actions);
+                        if (scenario.Name == "waymarks-select-new" && waymarkCalls.SequenceEqual(new[] { "save", "place" }) && lastPlacedWaymark != frameState.Waymarks!.Presets[1].Id)
+                            throw new InvalidOperationException("Save/import selection request must select the newly saved preset before placing.");
+                        if (view.MenuTargets.Count != 7) throw new InvalidOperationException("All seven native menu-bar entries must remain visible.");
                         if (view.Page == CompassPage.Ce && view.CeRowsDrawn != 15) throw new InvalidOperationException("CE list must remain accessible before entering the island or receiving observations.");
                         if (frame == 3) scrollBefore = view.PageScroll;
                         if (frame == 6) scrollAfter = view.PageScroll;
@@ -248,8 +337,25 @@ unsafe
                 }
                 ImGui.Render();
             }
-            if (scenario.Name == "menu-navigation" && actionCount != beforeActions)
+            if ((scenario.Name == "menu-navigation" || scenario.Name.StartsWith("cards-navigation")) && actionCount != beforeActions)
                 throw new InvalidOperationException("Changing feature pages must not change filters, routing, or tracking settings.");
+            if (scenario.Name == "auto-chests-toggle" && (!autoChestCalls.SequenceEqual(new[] { true, false }) || autoChestSetting != false))
+                throw new InvalidOperationException("Auto chest checkbox must enable and disable the persisted setting exactly once each.");
+            if (scenario.Name == "waymarks-button-check" && !waymarkCalls.SequenceEqual(new[] { "save", "place", "delete" }))
+                throw new InvalidOperationException("Waymark save/place and confirmed deletion must each dispatch once.");
+            if (scenario.Name == "waymarks-select-new" && (!waymarkCalls.SequenceEqual(new[] { "save", "place", "place" }) || lastPlacedWaymark != demoWaymark.Id || view.SelectedWaymark != demoWaymark.Id))
+                throw new InvalidOperationException("Save/import selection must be consumed once, preserving subsequent manual selections.");
+            if (scenario.Name == "waymarks-distance-toggle" && (!waymarkCalls.SequenceEqual(new[] { "distance-on", "place", "distance-off" }) || ignoreDistanceSetting != false))
+                throw new InvalidOperationException("Ignore distance must toggle both directions and permit the selected preset to be placed.");
+            if (scenario.Name is "waymarks-off-island" or "waymarks-empty" or "waymarks-combat" && waymarkCalls.Count != 0)
+                throw new InvalidOperationException("Off-island native actions and empty import must stay disabled.");
+            if (scenario.Name is "waymarks-placement-error" or "waymarks-unchanged" or "waymarks-combat" &&
+                (view.WaymarkTargets["placement-status"].Y <= view.WaymarkTargets["place"].Y || view.WaymarkTargets["placement-status"].Y >= scenario.Height - 40))
+                throw new InvalidOperationException("Placement feedback must remain visible directly below the action button.");
+            if (scenario.Name == "waymarks-cancel-check" && !waymarkCalls.SequenceEqual(new[] { "cancel" }))
+                throw new InvalidOperationException("Active placement cancellation must dispatch once.");
+            if (scenario.Name == "waymarks-import-check" && (waymarkCalls.Count != 1 || waymarkCalls[0] != "import" || WaymarkPreset.Import(importedWaymarks).Name != demoWaymark.Name))
+                throw new InvalidOperationException("Typing JSON and clicking import must preserve the complete preset.");
             if (scenario.Name == "menu-ce-open" && !view.MenuItemTargets.ContainsKey(CompassPage.Ce))
                 throw new InvalidOperationException("CE dropdown must be visible in the reference preview.");
             if (scenario.Name == "chart-zoomed" && (view.MapZoom < 1.5f || MathF.Abs(scrollAfter - scrollBefore) > 0.1f))

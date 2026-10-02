@@ -21,7 +21,9 @@ public sealed class Configuration : IPluginConfiguration
     public bool NotifyPotFateSpawn { get; set; } = true;
     public bool TrackCeCooldowns { get; set; } = true;
     public bool AutoFlagFates { get; set; } = true;
+    public bool IgnoreWaymarkDistance { get; set; } = false;
     public bool AutoAdvanceChests { get; set; } = true;
+    public bool AutoOpenNearbyChests { get; set; } = false;
     public float EmptyCheckRadius { get; set; } = RouteAutomation.CheckRadius;
     public bool UseChartRoute { get; set; } = true;
     public int ChartStartNumber { get; set; } = 1;

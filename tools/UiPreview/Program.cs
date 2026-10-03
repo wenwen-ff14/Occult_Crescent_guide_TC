@@ -40,6 +40,16 @@ unsafe
             textures[id] = new Texture(width, height, bytes);
         }
 
+        // Optional local game textures exported by PhantomAudit; never bundled as standalone assets.
+        var iconDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../artifacts/phantom-icons"));
+        foreach (var job in PhantomJobs.All)
+        {
+            var iconFile = Path.Combine(iconDirectory, $"{job.IconId}.rgba");
+            if (!File.Exists(iconFile)) continue;
+            using var reader = new BinaryReader(File.OpenRead(iconFile));
+            var width = reader.ReadInt32(); var height = reader.ReadInt32();
+            textures[job.IconId] = new(width, height, reader.ReadBytes(width * height * 4));
+        }
         using var catalogStream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "carrot_locations.json"));
         var catalog = SpotCatalog.Load(catalogStream);
         var origin = new Vector3(520, 98, -220);
@@ -106,6 +116,9 @@ unsafe
         bool? ignoreDistanceSetting = null;
         bool? autoChestSetting = null;
         List<bool> autoChestCalls = [];
+        List<byte> phantomSwitchCalls = [];
+        List<string> phantomCopies = [];
+        var phantomIconRefreshes = 0;
         void ActionCalled() => actionCount++;
         var actions = new CompassActions(_ => ActionCalled(), _ => ActionCalled(), ActionCalled, _ => ActionCalled(), ActionCalled, ActionCalled,
             SetPotAutoFlag: _ => ActionCalled(), FlagPot: ActionCalled, SetPotFateNotify: _ => ActionCalled(), SetHideOtherPlayers: _ => ActionCalled(),
@@ -115,12 +128,23 @@ unsafe
                 id => { ActionCalled(); lastPlacedWaymark = id; waymarkCalls.Add("place"); }, _ => { ActionCalled(); waymarkCalls.Add("delete"); },
                 (_, _) => ActionCalled(), _ => null, () => { ActionCalled(); waymarkCalls.Add("cancel"); },
                 value => { ActionCalled(); ignoreDistanceSetting = value; waymarkCalls.Add(value ? "distance-on" : "distance-off"); }),
-            SetAutoOpenNearbyChests: value => { ActionCalled(); autoChestSetting = value; autoChestCalls.Add(value); });
+            SetAutoOpenNearbyChests: value => { ActionCalled(); autoChestSetting = value; autoChestCalls.Add(value); },
+            SwitchPhantomJob: id => phantomSwitchCalls.Add(id), CopyPhantomMacro: text => phantomCopies.Add(text),
+            DrawPhantomJobIcon: (id, size) => { if (!textures.ContainsKey(id)) return false; ImGui.Image(new ImTextureID(id), size); return true; },
+            RefreshPhantomMacroIcons: () => phantomIconRefreshes++);
         var demoWaymark = new WaymarkPreset(Guid.NewGuid(), "南部 · 戰鬥集合點（示範）", 1252,
             new DateTimeOffset(2026, 10, 3, 18, 25, 0, TimeSpan.FromHours(8)),
             Enumerable.Range(0, 8).Select(i => new SavedWaymark(120 + i * 2, 5, -240 + i * 3, i < 6)).ToArray());
         var waymarkState = state with { Waymarks = new([demoWaymark, demoWaymark with { Id = Guid.NewGuid(), Name = "塔內 · 一樓（示範）" }],
             true, true, false, "示範資料 · 選擇預設後按「放置標點」。") };
+        CompassViewState TowerPreview(int index)
+        {
+            var arena = WaymarkPreview.Arenas[index];
+            Vector2[] offsets = [new(-10, -18), new(0, -18), new(10, -18), new(10, 0), new(10, 18), new(0, 18), new(-10, 18), new(-10, 0)];
+            var preset = demoWaymark with { Id = Guid.NewGuid(), Name = arena.Name + "（示範配置）",
+                Markers = offsets.Select(p => new SavedWaymark(arena.Center.X + p.X, -481, arena.Center.Y + p.Y, true)).ToArray() };
+            return waymarkState with { Waymarks = waymarkState.Waymarks! with { Presets = [preset] } };
+        }
         var unchangedPlacement = new WaymarkPlacement();
         unchangedPlacement.Start(demoWaymark, demoWaymark.Markers.ToArray(), new(1252, 1, 1, true, false), 0);
         var ceNow = new DateTimeOffset(2026, 10, 1, 14, 0, 0, TimeSpan.FromHours(8));
@@ -139,16 +163,32 @@ unsafe
              new(1963, "一般 FATE（示範）", "X 20.0 / Y 15.0", "進度 42% · 剩餘 08:25")]) };
         foreach (var scenario in new[]
         {
+            (Name: "phantom-jobs", Width: 940, Height: 980, Scale: 1f, State: state with {
+                PhantomJobs = new(0, true, "示範資料 · 選擇職業切換，或複製巨集指令。") }),
+            (Name: "phantom-jobs-compact", Width: 690, Height: 850, Scale: 1f, State: state with {
+                PhantomJobs = new(1, true, "示範資料 · 已切換為輔助騎士。") }),
+            (Name: "phantom-jobs-scaled", Width: 1020, Height: 1150, Scale: 1.5f, State: state with {
+                PhantomJobs = new(0, true, "示範資料 · 已放大介面文字。") }),
+            (Name: "phantom-jobs-actions", Width: 940, Height: 980, Scale: 1f, State: state with {
+                PhantomJobs = new(0, true, "示範資料 · 測試複製與切換操作。") }),
+            (Name: "phantom-jobs-last", Width: 690, Height: 850, Scale: 1f, State: state with {
+                PhantomJobs = new(0, true, "示範資料 · 測試捲動至最後一個職業。") }),
+            (Name: "phantom-jobs-off-island", Width: 940, Height: 980, Scale: 1f, State: state with {
+                Active = false, PhantomJobs = new(null, false, "請進入新月島，等待職業資料載入。") }),
             (Name: "auto-chests-settings", Width: 690, Height: 740, Scale: 1f, State: state with {
                 AutoOpenNearbyChests = true, AutoChestDetail = "偵測中；請靠近可開啟的寶箱（3 公尺內）。" }),
             (Name: "auto-chests-patrol", Width: 960, Height: 1100, Scale: 1f, State: chartState with {
-                AutoOpenNearbyChests = true, AutoChestDetail = "已嘗試開啟附近寶箱（1/3）；等待遊戲確認。" }),
+                AutoOpenNearbyChests = true, AutoChestDetail = "已嘗試開啟；仍在附近便持續嘗試，直到遊戲確認開啟。" }),
             (Name: "auto-chests-toggle", Width: 690, Height: 740, Scale: 1f, State: state),
             (Name: "auto-chests-paused", Width: 690, Height: 740, Scale: 1f, State: state with {
                 AutoOpenNearbyChests = true, AutoChestDetail = "戰鬥中，暫停開箱。" }),
             (Name: "auto-chests-scaled", Width: 1020, Height: 1000, Scale: 1.5f, State: state with {
-                AutoOpenNearbyChests = true, AutoChestDetail = "附近寶箱已達 3 次嘗試上限；可手動開啟，或離開 6 公尺再靠近。" }),
+                AutoOpenNearbyChests = true, AutoChestDetail = "附近持續開箱中（每秒最多一次）；等待遊戲更新。" }),
             (Name: "waymarks", Width: 960, Height: 940, Scale: 1f, State: waymarkState),
+            (Name: "waymarks-preview-1", Width: 1100, Height: 1500, Scale: 1f, State: TowerPreview(0)),
+            (Name: "waymarks-preview-2", Width: 1100, Height: 1500, Scale: 1f, State: TowerPreview(1)),
+            (Name: "waymarks-preview-3", Width: 1100, Height: 1500, Scale: 1f, State: TowerPreview(2)),
+            (Name: "waymarks-preview-4", Width: 1100, Height: 1500, Scale: 1f, State: TowerPreview(3)),
             (Name: "waymarks-compact", Width: 690, Height: 740, Scale: 1f, State: waymarkState),
             (Name: "waymarks-scaled", Width: 1020, Height: 1200, Scale: 1.5f, State: waymarkState),
             (Name: "waymarks-off-island", Width: 960, Height: 1000, Scale: 1f, State: waymarkState with { Active = false, Waymarks = waymarkState.Waymarks! with { CanCapture = false, CanPlace = false } }),
@@ -234,6 +274,7 @@ unsafe
             var view = new CompassView { Page = scenario.Name switch
             {
                 var name when name.StartsWith("waymarks") => CompassPage.Waymarks,
+                var name when name.StartsWith("phantom-jobs") => CompassPage.Settings,
                 var name when name.StartsWith("auto-chests") && name != "auto-chests-patrol" => CompassPage.Settings,
                 var name when name.StartsWith("general-fates") => CompassPage.Fate,
                 var name when name.StartsWith("ce-") || name == "menu-ce-open" => CompassPage.Ce,
@@ -243,6 +284,7 @@ unsafe
                 _ => CompassPage.Patrol,
             } };
             if (args.Length > 1 && !scenario.Name.StartsWith(args[1], StringComparison.Ordinal)) continue;
+            view.ShowPhantomJobs = scenario.Name.StartsWith("phantom-jobs");
             io.FontGlobalScale = scenario.Scale;
             io.DisplaySize = new Vector2(scenario.Width, scenario.Height);
             io.MousePos = new Vector2(-1000);
@@ -251,6 +293,7 @@ unsafe
             waymarkCalls.Clear();
             ignoreDistanceSetting = null;
             autoChestSetting = null; autoChestCalls.Clear();
+            phantomSwitchCalls.Clear(); phantomCopies.Clear(); phantomIconRefreshes = 0;
             string[] clicks = scenario.Name switch { "waymarks-button-check" => ["save", "place", "delete", "delete-confirm"],
                 "waymarks-off-island" => ["save", "place"], "waymarks-empty" => ["import"], "waymarks-combat" => ["place"], "waymarks-cancel-check" => ["cancel"],
                 "waymarks-import-check" => ["import-header", "json", "import"], _ => [] };
@@ -258,6 +301,9 @@ unsafe
             if (scenario.Name == "waymarks-distance-toggle") clicks = ["ignore-distance", "place", "ignore-distance"];
             if (scenario.Name == "waymarks-cancel-check") clicks = ["ignore-distance", "cancel"];
             if (scenario.Name == "auto-chests-toggle") clicks = ["auto-chest", "auto-chest"];
+            if (scenario.Name == "phantom-jobs-actions") clicks = ["refresh-icons", "copy-1", "switch-0", "switch-1"];
+            if (scenario.Name == "phantom-jobs-off-island") clicks = ["copy-1", "switch-1"];
+            if (scenario.Name == "phantom-jobs-last") clicks = ["job-scroll", "copy-12", "switch-12"];
             CompassPage[] navigation = [CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings, CompassPage.Fate, CompassPage.Pot, CompassPage.Waymarks, CompassPage.Patrol];
             for (var frame = 0; frame < (clicks.Length > 0 ? 3 + clicks.Length * 4 : scenario.Name.StartsWith("cards-navigation") ? 3 + navigation.Length * 4 : scenario.Name == "menu-navigation" ? 3 + navigation.Length * 7 : scenario.Name is "chart-zoomed" or "menu-ce-open" ? 7 : 3); frame++)
             {
@@ -277,9 +323,10 @@ unsafe
                 if (clicks.Length > 0 && frame >= 3)
                 {
                     var index = (frame - 3) / 4; var step = (frame - 3) % 4;
-                    if (step == 0) { var target = clicks[index] == "auto-chest" ? view.AutoChestToggleTarget : view.WaymarkTargets[clicks[index]]; io.AddMousePosEvent(target.X, target.Y); }
-                    if (step == 1) io.AddMouseButtonEvent(0, true);
-                    if (step == 2) io.AddMouseButtonEvent(0, false);
+                    if (step == 0) { var target = clicks[index] == "auto-chest" ? view.AutoChestToggleTarget : scenario.Name.StartsWith("phantom-jobs") ? view.PhantomTargets[clicks[index] == "job-scroll" ? "copy-1" : clicks[index]] : view.WaymarkTargets[clicks[index]]; io.AddMousePosEvent(target.X, target.Y); }
+                    if (step == 1 && clicks[index] == "job-scroll") io.AddMouseWheelEvent(0, -30);
+                    if (step == 1 && clicks[index] != "job-scroll") io.AddMouseButtonEvent(0, true);
+                    if (step == 2 && clicks[index] != "job-scroll") io.AddMouseButtonEvent(0, false);
                     if (step == 3 && clicks[index] == "json") foreach (char ch in demoWaymark.Export()) io.AddInputCharacter(ch);
                 }
                 if (scenario.Name == "menu-navigation" && frame >= 3)
@@ -339,6 +386,12 @@ unsafe
             }
             if ((scenario.Name == "menu-navigation" || scenario.Name.StartsWith("cards-navigation")) && actionCount != beforeActions)
                 throw new InvalidOperationException("Changing feature pages must not change filters, routing, or tracking settings.");
+            if (scenario.Name == "phantom-jobs-actions" && (phantomIconRefreshes != 1 || !phantomCopies.SequenceEqual(new[] { "/crescent job 1" }) || !phantomSwitchCalls.SequenceEqual(new byte[] { 1 })))
+                throw new InvalidOperationException("Copy must produce the selected macro; only a deliberate non-current switch may run.");
+            if (scenario.Name == "phantom-jobs-off-island" && (!phantomCopies.SequenceEqual(new[] { "/crescent job 1" }) || phantomSwitchCalls.Count != 0))
+                throw new InvalidOperationException("Outside the island macros remain copyable but job switching must be disabled.");
+            if (scenario.Name == "phantom-jobs-last" && (!phantomCopies.SequenceEqual(new[] { "/crescent job 12" }) || !phantomSwitchCalls.SequenceEqual(new byte[] { 12 })))
+                throw new InvalidOperationException("The last job must remain reachable by scrolling in a compact window.");
             if (scenario.Name == "auto-chests-toggle" && (!autoChestCalls.SequenceEqual(new[] { true, false }) || autoChestSetting != false))
                 throw new InvalidOperationException("Auto chest checkbox must enable and disable the persisted setting exactly once each.");
             if (scenario.Name == "waymarks-button-check" && !waymarkCalls.SequenceEqual(new[] { "save", "place", "delete" }))
@@ -354,6 +407,8 @@ unsafe
                 throw new InvalidOperationException("Placement feedback must remain visible directly below the action button.");
             if (scenario.Name == "waymarks-cancel-check" && !waymarkCalls.SequenceEqual(new[] { "cancel" }))
                 throw new InvalidOperationException("Active placement cancellation must dispatch once.");
+            if (scenario.Name.StartsWith("waymarks-preview-") && (view.PreviewMarkersDrawn != 8 || waymarkCalls.Count != 0 || actionCount != beforeActions))
+                throw new InvalidOperationException("Tower preview must draw eight markers without executing game actions.");
             if (scenario.Name == "waymarks-import-check" && (waymarkCalls.Count != 1 || waymarkCalls[0] != "import" || WaymarkPreset.Import(importedWaymarks).Name != demoWaymark.Name))
                 throw new InvalidOperationException("Typing JSON and clicking import must preserve the complete preset.");
             if (scenario.Name == "menu-ce-open" && !view.MenuItemTargets.ContainsKey(CompassPage.Ce))

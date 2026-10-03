@@ -25,11 +25,13 @@ internal sealed class MainWindow : Window
             plugin.SetPotFateNotify, plugin.FlagPotFate, plugin.FlagPotFateLocation, plugin.CancelPlanning, plugin.SetHideOtherPlayers,
             plugin.SetChartMode, plugin.SetChartStart, plugin.ContinueAfterLastChest, plugin.PauseRoute, plugin.ResumeRoute, plugin.StopRoute, plugin.ConfirmChestOpened,
             plugin.SetCeTracking, plugin.ClearCeCooldowns, plugin.SetFateAutoFlag, plugin.ReleaseFateNavigation, plugin.FlagGeneralFate, plugin.WaymarkActions,
-            plugin.SetAutoOpenNearbyChests);
+            plugin.SetAutoOpenNearbyChests, plugin.SwitchPhantomJob, Plugin.DrawPhantomJobIcon,
+            RefreshPhantomMacroIcons: plugin.RefreshPhantomMacroIcons);
     }
 
     internal static string KindName(SpotKind kind) => CompassView.KindName(kind);
-    internal void OpenSettings() { view.Page = CompassPage.Settings; IsOpen = true; }
+    internal void OpenSettings() { view.Page = CompassPage.Settings; view.ShowPhantomJobs = false; IsOpen = true; }
+    internal void OpenPhantomJobs() { view.Page = CompassPage.Settings; view.ShowPhantomJobs = true; IsOpen = true; }
     internal void OpenCeCooldowns() { view.Page = CompassPage.Ce; IsOpen = true; }
     internal void OpenFates() { view.Page = CompassPage.Fate; IsOpen = true; }
     internal void OpenWaymarks() { view.Page = CompassPage.Waymarks; IsOpen = true; }
@@ -72,7 +74,7 @@ internal sealed class MainWindow : Window
                     Coordinates.IsFinite(f.Position) ? Plugin.MapPosition(new Spot("fate", plugin.Session.Territory, SpotKind.Other, 0, f.Position)) : "座標尚未就緒",
                     $"{(f.Preparing ? "準備中" : $"進度 {f.Progress}%")}" + (f.EndsAt is { } end ? $" · 剩餘 {Math.Max(0, (int)(end - now).TotalMinutes):00}:{Math.Max(0, (int)(end - now).TotalSeconds) % 60:00}" : ""),
                     plugin.Active && Coordinates.IsFinite(f.Position))).ToArray()), Waymarks: plugin.WaymarkState(),
-            AutoOpenNearbyChests: config.AutoOpenNearbyChests, AutoChestDetail: plugin.AutoChestDetail), actions);
+            AutoOpenNearbyChests: config.AutoOpenNearbyChests, AutoChestDetail: plugin.AutoChestDetail, PhantomJobs: plugin.PhantomJobState), actions);
     }
 
     private CompassFateState FateState()

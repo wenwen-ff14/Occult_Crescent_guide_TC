@@ -22,6 +22,8 @@ internal sealed record CompassWaymarkState(IReadOnlyList<WaymarkPreset> Presets,
     bool IgnoreDistance = false);
 internal sealed record CompassWaymarkActions(Action<string> Save, Action<string, bool> Import, Action<Guid> Place, Action<Guid> Delete,
     Action<Guid, string> Rename, Func<Guid, string?> Export, Action Cancel, Action<bool>? SetIgnoreDistance = null);
+internal sealed record CompassPhantomJobs(byte? CurrentJob, bool CanSwitch, string Detail,
+    string MacroIconDetail = "關閉遊戲巨集編輯視窗後，預設 M 會自動換成職業圖示。");
 internal sealed record CompassViewState(
     bool Active, string Region, Vector3 Position, CompassFilters Filters, bool WorldHints,
     IReadOnlyList<CompassPoint> Points, IReadOnlyList<CompassPoint> Route,
@@ -33,7 +35,7 @@ internal sealed record CompassViewState(
     string ExplorationDetail = "等待角色探索紀錄；未讀取前不列入未探索清單。",
     bool HideOtherPlayers = false, string PlayerVisibilityDetail = "只在新月島生效，預設關閉。", CompassRouteControls? Controls = null,
     CompassCeState? Ce = null, string PluginVersion = "預覽", CompassGeneralFates? GeneralFates = null, CompassWaymarkState? Waymarks = null,
-    bool AutoOpenNearbyChests = false, string AutoChestDetail = "關閉；勾選後自動開啟 3 公尺內的寶箱。");
+    bool AutoOpenNearbyChests = false, string AutoChestDetail = "關閉；勾選後自動開啟 2 公尺內的寶箱。", CompassPhantomJobs? PhantomJobs = null);
 internal sealed record CompassActions(
     Action<CompassFilters> SetFilters, Action<bool> SetWorldHints, Action Plan,
     Action<Spot?> Flag, Action Next, Action Restart,
@@ -45,4 +47,5 @@ internal sealed record CompassActions(
     Action? Pause = null, Action? Resume = null, Action? Stop = null, Action? ConfirmOpened = null,
     Action<bool>? SetCeTracking = null, Action? ClearCeCooldowns = null,
     Action<bool>? SetFateAutoFlag = null, Action? ReleaseFateNavigation = null, Action<ushort>? FlagGeneralFate = null, CompassWaymarkActions? Waymarks = null,
-    Action<bool>? SetAutoOpenNearbyChests = null);
+    Action<bool>? SetAutoOpenNearbyChests = null, Action<byte>? SwitchPhantomJob = null,
+    Func<uint, Vector2, bool>? DrawPhantomJobIcon = null, Action<string>? CopyPhantomMacro = null, Action? RefreshPhantomMacroIcons = null);

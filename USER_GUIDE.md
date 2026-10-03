@@ -38,7 +38,7 @@
 
 ## 安裝本機版本
 
-1. 將 `dist/CrescentCompass-0.9.4-api13.zip` 解壓縮到固定資料夾；保留 DLL、JSON 與相依 DLL 在一起。重載插件後確認視窗上方版本為 **0.9.4**。
+1. 將 `dist/CrescentCompass-0.9.7-api13.zip` 解壓縮到固定資料夾；保留 DLL、JSON 與相依 DLL 在一起。重載插件後確認視窗上方版本為 **0.9.7**。自訂套件庫亦提供 0.9.7，安裝方式見 [README](README.md)。
 2. 遊戲中使用 `/xlsettings`，到實驗性設定的 **Dev Plugin Locations** 加入解壓後 `CrescentCompass.dll` 的完整路徑。
 3. 使用 `/xlplugins`，到 **Dev Tools / Installed Dev Plugins** 啟用「新月島尋寶羅盤」。
 4. 啟用相容 API 13 的 vnavmesh，進入新月島，輸入 `/crescent`，等待「地形導航已就緒」，選擇目標種類並按「規劃巡查路線」。其他偵測與手動旗標功能可獨立使用。
@@ -55,6 +55,9 @@
 | 指令 | 用途 |
 |---|---|
 | `/crescent` | 開啟視窗 |
+| `/crescent jobs`（或 `job`） | 查看 13 種幻影職業圖標與複製巨集 |
+| `/crescent jobicons` | 更新職業巨集的預設 M 為職業圖示；先關閉遊戲巨集編輯視窗 |
+| `/crescent job 騎士`（或 `job 1`） | 切換幻影職業，支援放入遊戲巨集；[完整對照](docs/PHANTOM_JOBS.md) |
 | `/crescent ce` | 開啟 CE 冷卻頁 |
 | `/crescent fate` | 開啟 FATE 頁 |
 | `/crescent waymarks`（或 `waymark`） | 開啟標點預設頁 |
@@ -79,4 +82,3 @@
 同島同分流傳送只暫停偵測與空點計時，保留巡查紀錄、探查數量與路線。確定離島、登出或分流改變時才清空場次資料。單純離開物件載入範圍只會改成「曾看見」，不當作已開箱；已規劃站點在所有模式保留，但不能保證仍存在。「目前可選取」清單仍隱藏未載入物件。新發現的目標需要重新規劃才加入路線。原生地圖之前設下的單一旗標可能保留，插件不清除玩家之後手動設定的旗標。
 
 此版使用本機繁中版 `Dalamud 13.0.0.16` 參考檔編譯，已確認 0.6.0 能載入；各功能實際操作驗收狀態見 [版本紀錄](CHANGELOG.md) 與個別功能文件。目標區域尚未在客戶端開放時會保持等待狀態。地形步行路線需要 vnavmesh，無須 Lifestream。
-

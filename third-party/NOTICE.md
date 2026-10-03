@@ -70,6 +70,12 @@ The fixed FATE locations added in 0.4.5 use TC `Fate.Location` -> `planevent.lgb
 
 Public preset field names and ContentFinderCondition mapping were checked against [sourpuh/WaymarkPresetPlugin](https://github.com/sourpuh/WaymarkPresetPlugin/tree/6219d87cb3ceb425efd90351191978aa9d64b87e). Ground-ray material flags and individual-marker flow were researched in [sourpuh/ffxiv_waymarkstudio](https://github.com/sourpuh/ffxiv_waymarkstudio/tree/c1a519419e87a766efc10805a38f02ebcf9fde7f) and FFXIVClientStructs. The implementation, storage format, UI, TC client audit and tests are written for this repository. No upstream plugin binaries or source files are bundled. TC addresses and layout were separately verified against the user's local executable; game files are not redistributed. See `docs/WAYMARKS.md`.
 
+## Tower arena geometry references (0.9.5)
+
+Static horizontal centers, dimensions and platform placements were checked against [awgil/ffxiv_bossmod at 40b0abdd35e81517409bdc81446910f943a75a49](https://github.com/awgil/ffxiv_bossmod/tree/40b0abdd35e81517409bdc81446910f943a75a49/BossMod.Modules/Dawntrail/Foray/ForkedTower). Only geometric facts are included; no upstream source code, textures or combat logic are bundled. Rendering and detection code is original. See `docs/WAYMARK_PREVIEW.md` for files and limitations.
+
 ## Build references
+
+Phantom job names, row IDs and status icon mappings in 0.9.6 were verified against the user's local TC client. Status textures are loaded through Dalamud from the game installation; standalone game textures are not bundled. Documentation screenshots show the plugin UI using locally rendered icons. Native switching uses the bundled FFXIVClientStructs `AgentMKDSupportJobList.ChangeSupportJob` API. The command parser, state confirmation and UI were implemented for this project; no third-party plugin source was copied. See `docs/PHANTOM_JOBS.md`.
 
 Dalamud, Lumina, ImGui bindings and FFXIVClientStructs are provided by the user's launcher. Copies in `.sdk/` are local compilation references only and must not be included in release or source archives.

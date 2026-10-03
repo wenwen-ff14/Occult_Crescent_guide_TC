@@ -41,6 +41,7 @@ public sealed partial class Plugin : IDalamudPlugin
     [PluginService] internal static IFateTable Fates { get; private set; } = null!;
     [PluginService] internal static INotificationManager Notifications { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
+    [PluginService] internal static ITextureProvider Textures { get; private set; } = null!;
 
     private readonly List<Spot> catalog = [];
     private readonly List<PotCandidate> potCatalog = [];
@@ -147,7 +148,7 @@ public sealed partial class Plugin : IDalamudPlugin
         windows.AddWindow(window);
         Commands.AddHandler("/crescent", new CommandInfo(OnCommand)
         {
-            HelpMessage = "新月島尋寶羅盤。waymarks 儲存與匯入標點，ce 冷卻與觸發條件，fate 事件與自動標點，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 下一站旗標，pot 魔法罐搜尋點，next 已巡查，reset 續巡，clear 清除巡查重排。",
+            HelpMessage = "新月島尋寶羅盤。jobs 職業圖標與巨集，job 職業名稱或編號 切換幻影職業，jobicons 更新快捷列巨集圖示；waymarks 標點，ce 冷卻，fate 事件，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 旗標，pot 魔法罐，next 已巡查，reset 續巡，clear 清除巡查。",
         });
         Framework.Update += Update;
         Chat.ChatMessage += OnChatMessage;
@@ -204,6 +205,8 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void Update(IFramework _)
     {
+        UpdatePhantomMacroIcons();
+        UpdatePhantomJobs();
         UpdateWaymarks();
         if (retryPlayerVisibility) { retryPlayerVisibility = false; playerVisibility.Retry(); }
         // Must run before the patrol's loading/territory early returns so island exits also restore models.
@@ -750,6 +753,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void OnCommand(string command, string args)
     {
+        if (HandlePhantomCommand(args)) return;
         switch (args.Trim().ToLowerInvariant())
         {
             case "ce": window.OpenCeCooldowns(); return;

@@ -12,7 +12,7 @@ try {
         dotnet run --project tools/UiPreview/UiPreview.csproj -c Release -- artifacts/ui-preview
         if ($LASTEXITCODE -ne 0) { throw 'UI validation failed.' }
         # Refresh documented snapshots; other generated scenarios remain local artifacts.
-        $taskSnapshots = @((Get-ChildItem docs/previews -Filter '*.png' -File).Name) + @('cards-navigation.png', 'cards-navigation-scaled.png')
+        $taskSnapshots = @((Get-ChildItem docs/previews -Filter '*.png' -File).Name) + @('cards-navigation.png', 'cards-navigation-scaled.png', 'phantom-jobs.png')
         foreach ($taskName in ($taskSnapshots | Select-Object -Unique)) {
             $taskImage = Join-Path 'artifacts/ui-preview' $taskName
             if (Test-Path -LiteralPath $taskImage) { Copy-Item -LiteralPath $taskImage -Destination (Join-Path 'docs/previews' $taskName) }

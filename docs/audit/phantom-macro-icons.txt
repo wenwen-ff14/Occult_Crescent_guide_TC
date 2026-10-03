@@ -1,0 +1,8 @@
+TC client 2026.09.14.0000.0000; offline SDK/data audit, 2026-10-03.
+Game UI display and file persistence still require in-game verification.
+MACRO ICON 0: RowId=0;Icon=66001;Unknown0=0
+Client SHA256: 837B9E2893D45D22C1DDE3D1A134AF2749E0C9FFF6E2EF7246B84860F855E247
+PASS RaptureMacroModule.GetMacro: unique SDK signature; target RVA 791B30
+PASS Macro.SetIcon: unique SDK signature; target RVA 791940
+PASS RaptureMacroModule.SetSavePendingFlag: unique SDK signature; target RVA 793110
+PASS RaptureHotbarModule.ReloadMacroSlots: unique SDK signature; target RVA 79B120

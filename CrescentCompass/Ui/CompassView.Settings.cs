@@ -9,6 +9,9 @@ internal sealed partial class CompassView
 {
     private void DrawSettings(CompassViewState state, CompassActions actions)
     {
+        if (ShowPhantomJobs) { DrawPhantomJobs(state, actions); return; }
+        if (ToneButton("幻影職業／巨集 →", new Vector2(0, U(40)), Violet)) ShowPhantomJobs = true;
+        ImGui.Spacing();
         ImGui.TextColored(Mint, "寶箱互動");
         DrawAutoChestControl(state, actions);
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
@@ -39,9 +42,9 @@ internal sealed partial class CompassView
     private void DrawAutoChestControl(CompassViewState state, CompassActions actions)
     {
         var enabled = state.AutoOpenNearbyChests;
-        if (ImGui.Checkbox("自動開啟附近寶箱（3 公尺）", ref enabled)) actions.SetAutoOpenNearbyChests?.Invoke(enabled);
+        if (ImGui.Checkbox("自動開啟附近寶箱（2 公尺）", ref enabled)) actions.SetAutoOpenNearbyChests?.Invoke(enabled);
         AutoChestToggleTarget = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
-        HoverHint("只在新月島互動已載入、未開啟且可選取的寶箱；包含魔法罐／兔子寶箱。\n不受地圖顯示篩選影響，無需規劃路線；視窗關閉後仍有效。\n請自行靠近，支援地面騎乘；飛行、乘客、上下坐騎、戰鬥、讀條、傳送、倒地與巡查暫停時停止。\n每 5 秒最多嘗試一次，同一箱最多 3 次；保留遊戲的距離與視線檢查。");
+        HoverHint("只在新月島互動已載入、未開啟且可選取的寶箱；包含魔法罐／兔子寶箱。\n不受地圖顯示篩選影響，無需規劃路線；視窗關閉後仍有效。\n請自行靠近，支援地面騎乘；飛行、乘客、上下坐騎、戰鬥、讀條、傳送、倒地與巡查暫停時停止。\n靠近便嘗試，不用停穩；每秒最多一次，無次數上限，直到開啟、離開或狀態不允許。\n保留遊戲的距離與視線檢查。");
         if (enabled) ImGui.TextWrapped($"自動開箱：{state.AutoChestDetail}");
     }
 

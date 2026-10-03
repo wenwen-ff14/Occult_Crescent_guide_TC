@@ -68,6 +68,7 @@ internal sealed partial class CompassView
                     if (ImGui.MenuItem("只顯示未探索地點", "", state.Filters.OnlyUnexplored)) actions.SetFilters(state.Filters with { OnlyUnexplored = !state.Filters.OnlyUnexplored });
                     break;
                 case CompassPage.Settings:
+                    if (ImGui.MenuItem("幻影職業／巨集", "/crescent jobs")) { Page = CompassPage.Settings; ShowPhantomJobs = true; }
                     if (ImGui.MenuItem("場景位置提示", "", state.WorldHints)) actions.SetWorldHints(!state.WorldHints);
                     if (ImGui.MenuItem("隱藏其他玩家（保留倒地者）", "", state.HideOtherPlayers)) actions.SetHideOtherPlayers?.Invoke(!state.HideOtherPlayers);
                     break;

@@ -15,22 +15,21 @@ public readonly record struct ChestInteractionContext(ushort Territory, uint Ins
 /// <summary>Only operates on currently loaded observations. Submitting an interaction is not proof of collection.</summary>
 public sealed class AutoChestOpener
 {
-    public const float Radius = 3;
+    public const float Radius = 2;
     public const float RearmRadius = 6;
-    public const int AttemptIntervalMs = 5000;
-    public const int MaxAttempts = 3;
+    public const int AttemptIntervalMs = 1000;
     private sealed class Attempt(Vector3 position, long seen)
     {
         public Vector3 Position { get; } = position;
         public long Seen { get; set; } = seen;
-        public int Count { get; set; }
+        public long? LastAttempt { get; set; }
         public bool Spent { get; set; }
     }
     private readonly Dictionary<(ulong Object, uint Data), Attempt> attempts = [];
     private (ushort Territory, uint Instance, ulong Character)? session;
     private long? lastAttempt;
     private long? lastTick;
-    public string Detail { get; private set; } = "關閉；勾選後自動開啟 3 公尺內的寶箱。";
+    public string Detail { get; private set; } = "關閉；勾選後自動開啟 2 公尺內的寶箱。";
 
     public void Reset()
     {
@@ -46,7 +45,7 @@ public sealed class AutoChestOpener
     public void Update(bool enabled, ChestInteractionContext context, IReadOnlyList<Observation> observations,
         Vector3 player, long now, Func<Observation, bool> interact)
     {
-        if (!enabled) { Reset(); Detail = "關閉；勾選後自動開啟 3 公尺內的寶箱。"; return; }
+        if (!enabled) { Reset(); Detail = "關閉；勾選後自動開啟 2 公尺內的寶箱。"; return; }
         var identity = (context.Territory, context.Instance, context.CharacterId);
         if (session != identity || lastTick is { } previous && now < previous) Reset();
         session = identity; lastTick = now;
@@ -70,21 +69,22 @@ public sealed class AutoChestOpener
         if (nearby.Any(o => o.Opening && Vector3.DistanceSquared(o.Position, player) <= Radius * Radius))
         { Detail = "附近寶箱正在開啟，等待完成。"; return; }
         if (lastAttempt is { } last && now - last < AttemptIntervalMs)
-        { Detail = "已嘗試互動，等待遊戲更新；不代表已取得寶物。"; return; }
+        { Detail = "附近持續開箱中（每秒最多一次）；等待遊戲更新。"; return; }
 
         var eligible = nearby.Where(o => Eligible(o, player) && !attempts[(o.ObjectId, o.DataId)].Spent).ToArray();
-        var target = eligible.Where(o => attempts[(o.ObjectId, o.DataId)].Count < MaxAttempts)
-            .OrderBy(o => Vector3.DistanceSquared(o.Position, player)).ThenBy(o => o.ObjectId).FirstOrDefault();
+        // Rotate between nearby chests so one rejected interaction cannot starve the others.
+        var target = eligible.OrderBy(o => attempts[(o.ObjectId, o.DataId)].LastAttempt ?? long.MinValue)
+            .ThenBy(o => Vector3.DistanceSquared(o.Position, player)).ThenBy(o => o.ObjectId).FirstOrDefault();
         if (target is null)
         {
-            Detail = eligible.Length > 0 ? "附近寶箱已達 3 次嘗試上限；可手動開啟，或離開 6 公尺再靠近。" : "偵測中；請靠近可開啟的寶箱（3 公尺內）。";
+            Detail = "偵測中；靠近可開啟的寶箱（2 公尺內）便持續嘗試。";
             return;
         }
         // Reserve the attempt before calling native code, including failures, to prevent repeated calls each frame.
         lastAttempt = now;
         var attempt = attempts[(target.ObjectId, target.DataId)];
-        attempt.Count++;
-        Detail = interact(target) ? $"已嘗試開啟附近寶箱（{attempt.Count}/{MaxAttempts}）；等待遊戲確認。" :
-            "目標或角色狀態已改變；稍後重新檢查。";
+        attempt.LastAttempt = now;
+        Detail = interact(target) ? "已嘗試開啟；仍在附近便持續嘗試，直到遊戲確認開啟。" :
+            "目標或角色狀態已改變；仍在附近便持續檢查。";
     }
 }

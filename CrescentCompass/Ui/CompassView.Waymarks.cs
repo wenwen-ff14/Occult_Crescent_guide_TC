@@ -170,6 +170,8 @@ internal sealed partial class CompassView
         }
         else if (split) ImGui.TextWrapped("先儲存或匯入一組預設，再從左側選取。放置與管理操作會顯示在這裡。");
         if (split) ImGui.EndTable();
+        if (library.Presets.FirstOrDefault(p => p.Id == waymarkSelected) is { } preview)
+            DrawWaymarkPreview(preview);
     }
 
     private void SelectWaymark(WaymarkPreset? preset)

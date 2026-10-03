@@ -37,6 +37,13 @@ dotnet run --project tools/UiPreview/UiPreview.csproj -c Release
 
 輸出至 `artifacts/ui-preview/`：標準、窄版、150% 字體、等待、魔法罐、探索筆記與全島已知位置預覽。這些預覽使用示範狀態，不能替代遊戲物件與地圖旗標驗證。
 
+幻影職業的圖標可由本機遊戲資料匯出供離線預覽使用（不提交或打包匯出的原始圖標）；未匯出時預覽會顯示編號備援。唯讀工具同時核對職業資料及 SDK 特徵碼：
+
+```powershell
+dotnet run --project tools/PhantomAudit -c Release -- '<遊戲目錄>/game/sqpack' '<遊戲目錄>/game/ffxiv_dx11.exe' artifacts/phantom-icons
+dotnet run --project tools/UiPreview -c Release -- artifacts/ui-preview phantom-jobs
+```
+
 
 ## 統一驗證入口
 

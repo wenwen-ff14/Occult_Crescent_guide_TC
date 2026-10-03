@@ -24,7 +24,7 @@ public sealed partial class Plugin
         Objects.LocalPlayer is not { IsDead: false, CurrentHp: > 0 }, IsPaused,
         Conditions[ConditionFlag.InFlight], Conditions[ConditionFlag.RidingPillion]);
 
-    internal string AutoChestDetail => !Config.AutoOpenNearbyChests ? "關閉；勾選後自動開啟 3 公尺內的寶箱。" :
+    internal string AutoChestDetail => !Config.AutoOpenNearbyChests ? "關閉；勾選後自動開啟 2 公尺內的寶箱。" :
         autoChestFaulted ? "互動介面發生錯誤，已暫停；請查看 Dalamud 記錄，關閉再開啟可重試。" :
         AutoChestContext.BlockReason is { Length: > 0 } reason ? reason : autoChestOpener.Detail;
 
@@ -42,7 +42,10 @@ public sealed partial class Plugin
     private void UpdateAutoChests(IReadOnlyList<Observation> observations, long now)
     {
         if (autoChestFaulted) return;
-        try { autoChestOpener.Update(Config.AutoOpenNearbyChests, AutoChestContext, observations, Position, now, InteractWithChest); }
+        try
+        {
+            autoChestOpener.Update(Config.AutoOpenNearbyChests, AutoChestContext, observations, Position, now, InteractWithChest);
+        }
         catch (Exception error)
         {
             autoChestFaulted = true;

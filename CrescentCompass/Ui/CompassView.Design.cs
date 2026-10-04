@@ -14,6 +14,7 @@ internal sealed partial class CompassView
         (CompassPage.Ce, "CE 冷卻", "事件紀錄", Sky),
         (CompassPage.Exploration, "探索筆記", "島嶼探索", Violet),
         (CompassPage.Waymarks, "標點", "位置收藏", Rose),
+        (CompassPage.Loot, "背包整理", "", Bronze),
         (CompassPage.Settings, "設定", "個人偏好", Silver),
     ];
     internal Dictionary<CompassPage, Vector2> PageTargets { get; } = [];
@@ -24,11 +25,12 @@ internal sealed partial class CompassView
         PageTargets.Clear();
         var width = ImGui.GetContentRegionAvail().X;
         var gap = U(6);
-        var tileWidth = (width - gap * 6) / 7;
+        var columns = Destinations.Length;
+        var tileWidth = (width - gap * (columns - 1)) / columns;
         for (var i = 0; i < Destinations.Length; i++)
         {
             var item = Destinations[i];
-            if (i > 0) ImGui.SameLine(0, gap);
+            if (i % columns > 0) ImGui.SameLine(0, gap);
             var selected = Page == item.Page;
             var origin = ImGui.GetCursorScreenPos();
             var size = new Vector2(tileWidth, U(62));
@@ -42,10 +44,12 @@ internal sealed partial class CompassView
             var draw = ImGui.GetWindowDrawList();
             var ink = selected || hovered ? Background : item.Color;
             var titleSize = ImGui.CalcTextSize(item.Title).X;
-            Label(draw, origin + new Vector2((tileWidth - titleSize) / 2, U(9)), item.Title, ink, 17);
+            var titleRatio = Math.Min(1, (tileWidth - U(6)) / titleSize);
+            Label(draw, origin + new Vector2((tileWidth - titleSize * titleRatio) / 2, U(item.Detail.Length == 0 ? 22 : 9)), item.Title, ink, 17 * titleRatio);
             var detailSize = ImGui.CalcTextSize(item.Detail).X * 15 / 17;
-            Label(draw, origin + new Vector2((tileWidth - detailSize) / 2, U(38)), item.Detail, selected || hovered ? Background : Muted, 15);
-            if (selected) draw.AddCircleFilled(origin + new Vector2(tileWidth / 2, U(31)), U(2), Pack(Background));
+            var detailRatio = Math.Min(1, (tileWidth - U(6)) / detailSize);
+            Label(draw, origin + new Vector2((tileWidth - detailSize * detailRatio) / 2, U(38)), item.Detail, selected || hovered ? Background : Muted, 15 * detailRatio);
+            if (selected && item.Detail.Length > 0) draw.AddCircleFilled(origin + new Vector2(tileWidth / 2, U(31)), U(2), Pack(Background));
             ImGui.PopStyleColor(4);
         }
         ImGui.Spacing();

@@ -35,7 +35,7 @@ internal sealed record CompassViewState(
     string ExplorationDetail = "等待角色探索紀錄；未讀取前不列入未探索清單。",
     bool HideOtherPlayers = false, string PlayerVisibilityDetail = "只在新月島生效，預設關閉。", CompassRouteControls? Controls = null,
     CompassCeState? Ce = null, string PluginVersion = "預覽", CompassGeneralFates? GeneralFates = null, CompassWaymarkState? Waymarks = null,
-    bool AutoOpenNearbyChests = false, string AutoChestDetail = "關閉；勾選後自動開啟 2 公尺內的寶箱。", CompassPhantomJobs? PhantomJobs = null);
+    bool AutoOpenNearbyChests = false, string AutoChestDetail = "關閉；勾選後自動開啟 2 公尺內的寶箱。", CompassPhantomJobs? PhantomJobs = null, CompassLootState? Loot = null);
 internal sealed record CompassActions(
     Action<CompassFilters> SetFilters, Action<bool> SetWorldHints, Action Plan,
     Action<Spot?> Flag, Action Next, Action Restart,
@@ -48,4 +48,4 @@ internal sealed record CompassActions(
     Action<bool>? SetCeTracking = null, Action? ClearCeCooldowns = null,
     Action<bool>? SetFateAutoFlag = null, Action? ReleaseFateNavigation = null, Action<ushort>? FlagGeneralFate = null, CompassWaymarkActions? Waymarks = null,
     Action<bool>? SetAutoOpenNearbyChests = null, Action<byte>? SwitchPhantomJob = null,
-    Func<uint, Vector2, bool>? DrawPhantomJobIcon = null, Action<string>? CopyPhantomMacro = null, Action? RefreshPhantomMacroIcons = null);
+    Func<uint, Vector2, bool>? DrawPhantomJobIcon = null, Action<string>? CopyPhantomMacro = null, Action? RefreshPhantomMacroIcons = null, CompassLootActions? Loot = null);

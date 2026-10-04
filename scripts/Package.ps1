@@ -45,6 +45,7 @@ $taskRuntime['docs/previews/menu-ce-open.png'] = Join-Path $taskRoot 'docs/previ
 $taskRuntime['docs/FATE_AUTO_FLAGS.md'] = Join-Path $taskRoot 'docs/FATE_AUTO_FLAGS.md'
 $taskRuntime['docs/WAYMARKS.md'] = Join-Path $taskRoot 'docs/WAYMARKS.md'
 $taskRuntime['docs/AUTO_CHESTS.md'] = Join-Path $taskRoot 'docs/AUTO_CHESTS.md'
+$taskRuntime['docs/LOOT_CLEANUP.md'] = Join-Path $taskRoot 'docs/LOOT_CLEANUP.md'
 $taskRuntime['docs/PHANTOM_JOBS.md'] = Join-Path $taskRoot 'docs/PHANTOM_JOBS.md'
 $taskRuntime['docs/audit/phantom-macro-icons.txt'] = Join-Path $taskRoot 'docs/audit/phantom-macro-icons.txt'
 $taskRuntime['docs/previews/phantom-jobs.png'] = Join-Path $taskRoot 'docs/previews/phantom-jobs.png'

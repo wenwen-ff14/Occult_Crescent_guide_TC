@@ -7,6 +7,8 @@ namespace CrescentCompass;
 public sealed class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 1;
+    public HashSet<uint> GarbageItemIds { get; set; } = [];
+    public LootCleanupMode LootMode { get; set; } = LootCleanupMode.Discard;
     public bool IncludeCarrots { get; set; } = true;
     public bool IncludeSilver { get; set; } = true;
     public bool IncludeBronze { get; set; } = false;

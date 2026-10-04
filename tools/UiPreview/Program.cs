@@ -131,7 +131,7 @@ unsafe
             SetAutoOpenNearbyChests: value => { ActionCalled(); autoChestSetting = value; autoChestCalls.Add(value); },
             SwitchPhantomJob: id => phantomSwitchCalls.Add(id), CopyPhantomMacro: text => phantomCopies.Add(text),
             DrawPhantomJobIcon: (id, size) => { if (!textures.ContainsKey(id)) return false; ImGui.Image(new ImTextureID(id), size); return true; },
-            RefreshPhantomMacroIcons: () => phantomIconRefreshes++);
+            RefreshPhantomMacroIcons: () => phantomIconRefreshes++, Loot: new((_, _) => ActionCalled(), _ => ActionCalled(), _ => ActionCalled()));
         var demoWaymark = new WaymarkPreset(Guid.NewGuid(), "南部 · 戰鬥集合點（示範）", 1252,
             new DateTimeOffset(2026, 10, 3, 18, 25, 0, TimeSpan.FromHours(8)),
             Enumerable.Range(0, 8).Select(i => new SavedWaymark(120 + i * 2, 5, -240 + i * 3, i < 6)).ToArray());
@@ -161,8 +161,13 @@ unsafe
         var generalFates = state with { GeneralFates = new(true, true, "已標點：幸福的魔法甕；巡查保留，事件結束或解除後接續。",
             [new(1976, "幸福的魔法甕", "X 25.5 / Y 17.2", "進度 25% · 剩餘 13:24"),
              new(1963, "一般 FATE（示範）", "X 20.0 / Y 15.0", "進度 42% · 剩餘 08:25")]) };
+        using var lootStream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "loot_catalog.json"));
+        var lootState = state with { Loot = new(LootCleanup.Load(lootStream), new HashSet<uint> { 8143 }, new Dictionary<uint, int> { [8143] = 99 }, LootCleanupMode.Discard, false, "未啟動；先標記垃圾再啟動。", 0) };
         foreach (var scenario in new[]
         {
+            (Name: "loot", Width: 940, Height: 980, Scale: 1f, State: lootState),
+            (Name: "loot-compact", Width: 690, Height: 980, Scale: 1f, State: lootState),
+            (Name: "loot-scaled", Width: 1020, Height: 1250, Scale: 1.5f, State: lootState),
             (Name: "phantom-jobs", Width: 940, Height: 980, Scale: 1f, State: state with {
                 PhantomJobs = new(0, true, "示範資料 · 選擇職業切換，或複製巨集指令。") }),
             (Name: "phantom-jobs-compact", Width: 690, Height: 850, Scale: 1f, State: state with {
@@ -273,6 +278,7 @@ unsafe
         {
             var view = new CompassView { Page = scenario.Name switch
             {
+                var name when name.StartsWith("loot") => CompassPage.Loot,
                 var name when name.StartsWith("waymarks") => CompassPage.Waymarks,
                 var name when name.StartsWith("phantom-jobs") => CompassPage.Settings,
                 var name when name.StartsWith("auto-chests") && name != "auto-chests-patrol" => CompassPage.Settings,
@@ -375,7 +381,7 @@ unsafe
                         view.Draw(frameState, actions);
                         if (scenario.Name == "waymarks-select-new" && waymarkCalls.SequenceEqual(new[] { "save", "place" }) && lastPlacedWaymark != frameState.Waymarks!.Presets[1].Id)
                             throw new InvalidOperationException("Save/import selection request must select the newly saved preset before placing.");
-                        if (view.MenuTargets.Count != 7) throw new InvalidOperationException("All seven native menu-bar entries must remain visible.");
+                        if (view.MenuTargets.Count != 8) throw new InvalidOperationException("All eight native menu-bar entries must remain visible.");
                         if (view.Page == CompassPage.Ce && view.CeRowsDrawn != 15) throw new InvalidOperationException("CE list must remain accessible before entering the island or receiving observations.");
                         if (frame == 3) scrollBefore = view.PageScroll;
                         if (frame == 6) scrollAfter = view.PageScroll;

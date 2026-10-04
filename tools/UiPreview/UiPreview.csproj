@@ -12,6 +12,7 @@
     <Compile Include="../../CrescentCompass/Ui/*.cs" Link="Ui/%(Filename)%(Extension)" />
     <Reference Include="Dalamud.Bindings.ImGui"><HintPath>../../.sdk/Dalamud.Bindings.ImGui.dll</HintPath></Reference>
     <Reference Include="HexaGen.Runtime"><HintPath>../../.sdk/HexaGen.Runtime.dll</HintPath></Reference>
+    <None Include="../../CrescentCompass/Data/loot_catalog.json" Link="loot_catalog.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../.sdk/cimgui.dll" Link="cimgui.dll" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../CrescentCompass/Data/SouthHorn/carrot_locations.json" Link="carrot_locations.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../CrescentCompass/Data/SouthHorn/treasure_locations.json" Link="treasure_locations.json" CopyToOutputDirectory="PreserveNewest" />

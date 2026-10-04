@@ -1,0 +1,35 @@
+# 背包整理：保留、丟棄與 NPC 售出
+
+輸入 `/crescent loot` 或點選「背包整理」。物品預設不勾選並保留；勾選「丟棄」即標記垃圾。支援名稱、英文名、物品 ID 搜尋，南北部、背包內物品與垃圾篩選；滑鼠移到名稱可看所有寶箱來源。
+
+1. 勾選不需要物品的「丟棄」欄位。
+2. 選擇「自動丟棄」或「自動售出」。
+3. 按「啟動自動處理」。丟棄只在新月島內閒置時執行；售出需自行開啟一般 NPC 商店，可在島外使用。出售列表與回購列表皆可繼續售出背包垃圾，維持目前分頁；售出後自動跳到回購頁也會接續。
+
+規則涵蓋一般背包中所有同 ID 的物品，包含先前取得、其他來源取得以及整疊數量。丟棄無法復原。物品規則與模式會儲存，啟動狀態不儲存；登出、重新載入或變更規則／模式後需重新啟動。停止不能撤回已送出的請求。
+
+僅掃描四個一般背包。排除 HQ、收藏品、染色、投影、有魔晶石與已有精煉度的裝備；不觸碰裝備欄、兵裝庫、雇員、陸行鳥背包、重要物品與貨幣容器。售價為零的物品在售出模式保留，永不自動改成丟棄。戰鬥、轉場、倒地或遊戲確認視窗會暫停。
+
+每次只送出一筆，重新讀取背包槽位後才執行，等待數量／物品變更再接續。8 秒未確認變更會停止，不自動重試。遊戲若要求售出確認，插件會核對本次請求的商店處理器、確認視窗擁有者與 ID、背包槽位、物品 ID、整疊數量，僅自動確認完全相符的售出視窗。確認只送出一次，等待背包變更後自動接續下一疊；其他操作視窗不會代按。商店關閉或切換時停止。
+
+## 資料涵蓋範圍
+
+2026-10-05 的清單共 **292** 個唯一物品 ID。本機繁中客戶端可辨識 **255** 種，其餘 **37** 種保留英文名稱並停用垃圾設定；執行時重新用當前客戶端 Item 表核對名稱與 NPC 價格。
+
+- [XIVStats 原始掉落統計](https://xivstats.com/occult)：合併南北部所有已記錄版本的野外銅／銀箱、魔法罐銅／銀／金箱與幸運兔金箱，共 280 種。資料來自頁面內嵌 `/data/OccultTreasuresV2.json` 與 `/website/mappings/Items.json.gz`，只保留 ID、名稱及来源，不打包掉落次數／機率。
+- [南部掉落表](https://ffxiv.consolegameswiki.com/wiki/The_Occult_Crescent:_South_Horn/Treasure_Coffers) 與 [北部掉落表](https://ffxiv.consolegameswiki.com/wiki/The_Occult_Crescent:_North_Horn/Treasure_Coffers) 交叉核對來源分類。
+- [力之塔](https://ffxiv.consolegameswiki.com/wiki/The_Forked_Tower:_Blood)、[魔之塔](https://ffxiv.consolegameswiki.com/wiki/The_Forked_Tower:_Magic) 與 [魔之塔（極）](https://ffxiv.consolegameswiki.com/wiki/The_Forked_Tower:_Magic_(Extreme)) 補充 12 種唯一物品；塔內補充清單與逐項來源見 `audit/loot-tower-supplement.json`。
+
+這是目前來源已記錄的開箱物品集合，不保證未來版本或尚未被記錄的稀有掉落。Gil、經驗值與神典石不是可清理的一般背包物品；購買／成就兌換獎勵及單純 FATE／怪物掉落不冒充寶箱掉落。
+
+## 維護與驗證
+
+`scripts/Refresh-LootCatalog.ps1 -SqPack '<遊戲>/game/sqpack'` 可重新產生清單；塔內補充資料需要另行核對來源。
+
+售出入口參數核對自 [AutoRetainer 的 Memory.cs](https://github.com/PunishXIV/AutoRetainer/blob/master/AutoRetainer/Internal/Memory.cs)；未加入該插件相依或複製其排程功能。丟棄使用本機 API 13 SDK 的 `InventoryManager.DiscardItem`。本機執行檔 SHA256 `837B9E2893D45D22C1DDE3D1A134AF2749E0C9FFF6E2EF7246B84860F855E247`，售出特徵碼唯一匹配 RVA `1638A90`；丟棄 SDK 特徵碼唯一匹配 RVA `46EDC2`。可用 `tools/LootAudit --native <ffxiv_dx11.exe>` 重查。售出確認代理特徵碼唯一匹配 RVA `163BBCB`，指向 `2742D40`；本機原生流程於售出準備時讀取整疊數量，確認視窗由該代理持有。特徵碼存在不等於遊戲內交易驗收。
+
+0.10.4 修正售出就緒判斷：本機確認回呼於 RVA `1638E5A` 清除確認代理視窗 ID，而交易完成於 `163C92C` 清除 `WaitingForTransactionToFinish`；兩者皆不清除 `WaitingForSellConfirm`。該旗標直到下一筆售出準備（`1639CE3`）或商店操作事件才清除，不能拿來阻擋下一筆交易。就緒檢查改用確認代理的即時視窗 ID，仍等待交易完成並重新讀取背包；不修改遊戲旗標。
+
+0.10.5 修正分頁限制：`CurrentMode` 為 1（出售列表）或 2（回購列表）皆可送出背包售出請求。原生入口 RVA `1638A90` 使用背包／槽位，不依目前商店列表索引購買物品，也不限制這兩個分頁；插件不切換分頁、不呼叫回購買入。兩個分頁均保留交易中、確認視窗及雇員保護。
+
+遊戲內待驗收：先用少量明確標記的低價物品驗證整疊丟棄、普通 NPC 連續售出不同種類物品（含第一筆需要確認、售出後自動切回購頁）、不可售出保留、停止／登出、背包整理中槽位變更、保護物品、交易確認與逾時停止。未以真實玩家物品執行破壞性測試。

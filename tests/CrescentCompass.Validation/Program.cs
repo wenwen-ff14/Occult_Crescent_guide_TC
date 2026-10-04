@@ -237,6 +237,7 @@ pot.Reset();
 Check(!pot.Apply(new(PotHintKind.Reveal), Vector3.Zero, now) && !pot.Active, "Reset disarms queued hints");
 pot.UpdateBuff(true, 1346, Vector3.Zero, potCatalog, []);
 Check(pot.Candidates.Count == 82 && pot.Candidates.All(c => c.Territory == 1346), "New territory cannot retain south pot pads");
+LootChecks.Run(Check);
 RouteAutomationChecks.Run(Check);
 ExplorationChecks.Run(Check, exploration);
 PlayerVisibilityChecks.Run(Check);

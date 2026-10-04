@@ -5,7 +5,7 @@ using static CrescentCompass.Ui.CompassTheme;
 
 namespace CrescentCompass.Ui;
 
-internal enum CompassPage { Patrol, Pot, Ce, Exploration, Settings, Fate, Waymarks }
+internal enum CompassPage { Patrol, Pot, Ce, Exploration, Settings, Fate, Waymarks, Loot }
 
 internal sealed partial class CompassView
 {
@@ -18,9 +18,9 @@ internal sealed partial class CompassView
 
     private void DrawNavigation(CompassViewState state, CompassActions actions)
     {
-        string[] labels = ["巡查", "魔法罐", "FATE", "CE 冷卻", "探索筆記", "標點", "設定"];
-        string[] destinations = ["路線與地點", "尋寶與 FATE", "事件與自動標點", "查看冷卻與觸發條件", "查看島上地點", "儲存、匯入與還原", "顯示與紀錄設定"];
-        CompassPage[] pages = [CompassPage.Patrol, CompassPage.Pot, CompassPage.Fate, CompassPage.Ce, CompassPage.Exploration, CompassPage.Waymarks, CompassPage.Settings];
+        string[] labels = ["巡查", "魔法罐", "FATE", "CE 冷卻", "探索筆記", "標點", "背包整理", "設定"];
+        string[] destinations = ["路線與地點", "尋寶與 FATE", "事件與自動標點", "查看冷卻與觸發條件", "查看島上地點", "儲存、匯入與還原", "背包整理", "顯示與紀錄設定"];
+        CompassPage[] pages = [CompassPage.Patrol, CompassPage.Pot, CompassPage.Fate, CompassPage.Ce, CompassPage.Exploration, CompassPage.Waymarks, CompassPage.Loot, CompassPage.Settings];
         menuTargets.Clear();
         MenuItemTargets.Clear();
         if (!ImGui.BeginMenuBar()) return;

@@ -132,6 +132,7 @@ public sealed partial class Plugin : IDalamudPlugin
         Config.EmptyCheckRadius = RouteAutomation.NormalizeRadius(Config.EmptyCheckRadius);
         Config.ChartStartNumber = Math.Clamp(Config.ChartStartNumber, 1, ChestChart.Count);
         Config.ChestProgress ??= [];
+        InitializeLoot();
         var assembly = Assembly.GetExecutingAssembly();
         foreach (var name in assembly.GetManifestResourceNames().Where(n => n.EndsWith("_locations.json", StringComparison.Ordinal)))
         {
@@ -148,7 +149,7 @@ public sealed partial class Plugin : IDalamudPlugin
         windows.AddWindow(window);
         Commands.AddHandler("/crescent", new CommandInfo(OnCommand)
         {
-            HelpMessage = "新月島尋寶羅盤。jobs 職業圖標與巨集，job 職業名稱或編號 切換幻影職業，jobicons 更新快捷列巨集圖示；waymarks 標點，ce 冷卻，fate 事件，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 旗標，pot 魔法罐，next 已巡查，reset 續巡，clear 清除巡查。",
+            HelpMessage = "新月島尋寶羅盤。loot 背包整理保留／丟棄／售出，jobs 職業圖標與巨集，job 職業名稱或編號 切換幻影職業，jobicons 更新快捷列巨集圖示；waymarks 標點，ce 冷卻，fate 事件，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 旗標，pot 魔法罐，next 已巡查，reset 續巡，clear 清除巡查。",
         });
         Framework.Update += Update;
         Chat.ChatMessage += OnChatMessage;
@@ -156,7 +157,7 @@ public sealed partial class Plugin : IDalamudPlugin
         Toasts.QuestToast += OnQuestToast;
         Toasts.ErrorToast += OnErrorToast;
         Client.TerritoryChanged += TerritoryChanged;
-        logoutHandler = (_, _) => { CancelWaymarks("已登出，停止標點還原。"); patrolContext.Logout(); ResetSession(0); PotFates.Reset(); };
+        logoutHandler = (_, _) => { SetLootArmed(false); lootTracker.Reset(); CancelWaymarks("已登出，停止標點還原。"); patrolContext.Logout(); ResetSession(0); PotFates.Reset(); };
         Client.Logout += logoutHandler;
         PluginInterface.UiBuilder.Draw += Draw;
         PluginInterface.UiBuilder.OpenMainUi += OpenWindow;
@@ -205,6 +206,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void Update(IFramework _)
     {
+        UpdateLoot();
         UpdatePhantomMacroIcons();
         UpdatePhantomJobs();
         UpdateWaymarks();
@@ -756,6 +758,7 @@ public sealed partial class Plugin : IDalamudPlugin
         if (HandlePhantomCommand(args)) return;
         switch (args.Trim().ToLowerInvariant())
         {
+            case "loot": window.OpenLoot(); return;
             case "ce": window.OpenCeCooldowns(); return;
             case "fate": window.OpenFates(); return;
             case "waymark":

@@ -1,0 +1,11 @@
+{
+  "RetrievedAt": "2026-10-05",
+  "Source": "https://xivstats.com/occult",
+  "DropsPath": "/data/OccultTreasuresV2.json",
+  "DropSHA256": "5F2BCC757B21F4DF334081D560B3690662CE2425E9BAE95169233416DB46485C",
+  "ItemNamesSHA256": "D74332D0BFE8EC267802A07AF908081C86A45073B86249CCF2BFDB9B7E018003",
+  "CatalogSHA256": "32118C03376BB50588FA84405A1B23790B46C9F5871A03C161584193D839FD52",
+  "Count": 292,
+  "LocalAvailable": 255,
+  "Supplement": "loot-tower-supplement.json"
+}

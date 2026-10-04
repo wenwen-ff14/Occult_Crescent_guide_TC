@@ -58,6 +58,7 @@ internal sealed partial class CompassView
             DrawSection(destination.Title, destination.Detail, accent);
             switch (Page)
             {
+                case CompassPage.Loot: DrawLoot(state, actions); break;
                 case CompassPage.Patrol:
                     DrawStats(state);
                     if (state.Active) DrawJourney(state, actions);

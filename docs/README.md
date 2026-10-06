@@ -23,6 +23,7 @@
 - [標點預設](WAYMARKS.md)
 - [標點俯視與力之塔場地預覽](WAYMARK_PREVIEW.md)
 - [68 點圖表巡查](CHEST_CHART.md)
+- [巡查進度浮窗](PATROL_OVERLAY.md)
 - [地形步行路線](WALKING_ROUTES.md)
 - [CE 冷卻](CE_COOLDOWNS.md)
 - [FATE 自動旗標](FATE_AUTO_FLAGS.md)

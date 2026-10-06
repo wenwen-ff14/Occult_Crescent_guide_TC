@@ -10,11 +10,13 @@ public sealed record PotFateLive(PotFateDefinition Definition, string Name, Vect
     bool Preparing, DateTimeOffset? EndsAt);
 public sealed record PotFateSnapshot(IReadOnlyList<PotFateLive> Active, PotFateDefinition? Next,
     DateTimeOffset? ExpectedAt, bool UsesGameStart, bool ScanFresh);
+public sealed record PotFateReminder(PotFateDefinition Definition, DateTimeOffset ExpectedAt);
 
 /// <summary>Local observations only. A 30-minute estimate never becomes evidence of a new spawn.</summary>
 public sealed class PotFateTracker
 {
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(30);
+    public static readonly TimeSpan ReminderLead = TimeSpan.FromMinutes(5);
     public static IReadOnlyList<PotFateDefinition> Definitions { get; } = Array.AsReadOnly<PotFateDefinition>([
         // South: TC Fate.Location -> planevent.lgb InstanceId, mainland Map 967.
         new(1976, 1252, "北側", "幸福的魔法甕", 1977, new(200, 111.7266f, -215)),
@@ -29,6 +31,7 @@ public sealed class PotFateTracker
         public DateTimeOffset Start { get; set; } = start;
         public bool GameTime { get; set; } = gameTime;
         public bool Announced { get; set; }
+        public bool ReminderHandled { get; set; }
         public bool Finished { get; set; }
     }
     private readonly Dictionary<ushort, Occurrence> latest = [];
@@ -90,6 +93,19 @@ public sealed class PotFateTracker
         return new(fresh ? active.Where(f => f.EndsAt is null || f.EndsAt > now).ToArray() : [],
             anchor is null ? null : Find(anchor.Definition.NextId, territory), anchor?.Start + Interval,
             anchor?.GameTime == true, fresh);
+    }
+
+    /// <summary>Consume one reminder per observed cycle, including when muted; timestamp correction cannot replay it.</summary>
+    public PotFateReminder? TakeUpcomingReminder(DateTimeOffset now, bool notify)
+    {
+        if (lastScan is not { } scanned || now < scanned || now - scanned > TimeSpan.FromSeconds(3)) return null;
+        var anchor = latest.Values.OrderByDescending(o => o.Start).FirstOrDefault();
+        if (anchor is null || anchor.ReminderHandled) return null;
+        var expected = anchor.Start + Interval;
+        var remaining = expected - now;
+        if (remaining <= TimeSpan.Zero || remaining > ReminderLead || Find(anchor.Definition.NextId, territory) is not { } next) return null;
+        anchor.ReminderHandled = true;
+        return notify ? new(next, expected) : null;
     }
 
     private static DateTimeOffset? GameStart(long epoch, DateTimeOffset now)

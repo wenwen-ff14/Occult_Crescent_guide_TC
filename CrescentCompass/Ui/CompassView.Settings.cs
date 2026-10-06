@@ -18,10 +18,12 @@ internal sealed partial class CompassView
         ImGui.TextColored(Mint, "顯示設定");
         var hideOthers = state.HideOtherPlayers;
         if (ImGui.Checkbox("隱藏非小隊／好友玩家（倒地仍顯示）", ref hideOthers)) actions.SetHideOtherPlayers?.Invoke(hideOthers);
-        HoverHint("僅在新月島隱藏其他玩家模型，保留自己、小隊成員、好友與倒地玩家。復活後若仍不屬於小隊／好友，會重新隱藏。\n關閉、離島、傳送、過場、合照或卸載時，撤回本功能的隱藏設定。");
+        HoverHint("僅在新月島隱藏其他玩家模型，保留自己、小隊成員、好友與倒地玩家。未組隊好友也會比對好友快取。\n首次使用請在島外開啟好友名單約 2 秒，確認快取人數後再進島；新增／移除好友後同樣更新。尚無快取時暫停隱藏。\n關閉、離島、傳送、過場、合照或卸載時，撤回本功能的隱藏設定。");
         ImGui.TextWrapped(state.PlayerVisibilityDetail);
         var hints = state.WorldHints;
         if (ImGui.Checkbox("場景位置提示與下一站標示", ref hints)) actions.SetWorldHints(hints);
+        DrawPotOverlayControls(state, actions);
+        DrawPatrolOverlayControls(state, actions);
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         ImGui.TextColored(Mint, "巡查紀錄");
         ImGui.BeginDisabled(!state.Active);
@@ -34,7 +36,7 @@ internal sealed partial class CompassView
         ImGui.TextWrapped("探索筆記限島上 12 處，排除塔內避世書庫。未探索篩選依目前角色的遊戲完成狀態；「已巡查」另記本輪手動進度，清除巡查不會重設遊戲紀錄。");
         ImGui.TextWrapped("自動略過代表範圍內連續沒有可用寶箱，不當作已開箱。重新巡查保留紀錄並優先續巡；清除紀錄才會重跑。略過位置重新出現可再規劃。");
         ImGui.TextWrapped(state.Region.Contains("北") ? "北區點位取自公開資料；本機繁中客戶端無此區域，尚未完成遊戲資料核對。" : "南區野外 68／68 點已與繁中場景核對；塔內另有 14 點。魔法罐候選資料未經伺服器完整性驗證。");
-        ImGui.TextWrapped("圖表模式保留南部 1～68 編號順序；vnavmesh 只計算站間走法。地形最短模式則在 12 站內求此模型與優先條件下的最短順序，更多站點近似最佳化。同島同分流傳送保留路線，使用者暫停也會保留；落地後從目前位置接續。未計入敵人、機關、解鎖與傳送時間。");
+        ImGui.TextWrapped("巡查固定依南部 1～68 編號順序，vnavmesh 計算站間走法；開箱或確認近距離空點後自動標記下一站。同島同分流傳送與手動暫停會保留路線，落地後從目前位置接續。未計入敵人、機關、解鎖與傳送時間。");
         if (state.TotalStops > 0) ImGui.TextColored(Muted, $"已取得路段合計 {state.PlannedDistance:F0} m · {(state.Controls?.ChartMode == true ? "圖表固定順序" : state.Exact ? "此距離模型下最短順序" : "近似最佳化順序")}");
     }
 

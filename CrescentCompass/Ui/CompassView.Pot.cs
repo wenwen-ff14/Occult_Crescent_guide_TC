@@ -7,18 +7,46 @@ namespace CrescentCompass.Ui;
 
 internal sealed partial class CompassView
 {
+    internal Dictionary<string, Vector2> PotOverlayTargets { get; } = [];
+
+    private void DrawPotOverlayControls(CompassViewState state, CompassActions actions)
+    {
+        PotOverlayTargets.Clear();
+        var enabled = state.PotOverlay?.Enabled == true;
+        if (ImGui.Checkbox("在畫面顯示魔法罐倒數", ref enabled)) actions.PotOverlay?.SetVisible(enabled);
+        PotOverlayTargets["visible"] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        HoverHint("關閉主介面後仍顯示倒數。僅在新月島顯示；離島、傳送、過場及隱藏遊戲介面時自動隱藏。\n沿用本場 FATE 紀錄推估，未知時間不補算；與出現通知、場景位置提示分開設定。");
+        if (!enabled) return;
+        var locked = state.PotOverlay?.Locked ?? true;
+        if (ImGui.Button(locked ? "調整位置" : "完成調整"))
+        {
+            locked = !locked;
+            actions.PotOverlay?.SetLocked(locked);
+        }
+        PotOverlayTargets["locked"] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        ImGui.SameLine();
+        if (ImGui.SmallButton("重設倒數位置")) actions.PotOverlay?.ResetPosition();
+        PotOverlayTargets["reset"] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        ImGui.TextWrapped(locked ? "位置已鎖定，滑鼠可穿透；按「調整位置」後拖曳浮窗。" :
+            "拖曳倒數浮窗的任意位置移動，再按「完成調整」鎖定。放開滑鼠即保存位置。");
+        ImGui.Spacing();
+    }
+
     private void DrawFates(CompassViewState state, CompassActions actions)
     {
         if (state.Fates is not { } fates) return;
         ImGui.PushStyleColor(ImGuiCol.ChildBg, Vector4.Lerp(Surface, Gold, 0.08f));
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(U(14), U(12)));
         var locations = fates.Locations ?? [];
-        if (ImGui.BeginChild("pot-fates", new Vector2(0, U(154 + fates.Active.Count * 108 + (locations.Count > 0 ? 68 + locations.Count * 36 : 0))), true))
+        if (ImGui.BeginChild("pot-fates", new Vector2(0, U(190 + fates.Active.Count * 108 + (locations.Count > 0 ? 68 + locations.Count * 36 : 0))), true))
         {
             ImGui.TextColored(Gold, "魔法罐 FATE"); ImGui.SameLine();
             var notify = fates.Notify;
             if (ImGui.Checkbox("出現時通知", ref notify)) actions.SetPotFateNotify?.Invoke(notify);
             HoverHint("偵測到本場魔法罐 FATE 時，顯示一次 Dalamud 彈出通知與僅自己可見的聊天提示。\n關閉通知仍會追蹤倒數；插件視窗關閉時也會偵測。\n倒數是約 30 分鐘南北交替的推估，不是伺服器保證。換區、分流或重載後重新建立本場紀錄。");
+            var notifySoon = fates.NotifySoon;
+            if (ImGui.Checkbox("預估剩 5 分鐘時通知", ref notifySoon)) actions.SetPotFateSoonNotify?.Invoke(notifySoon);
+            HoverHint("下一場預估倒數進入 5 分鐘內時，顯示彈出通知與個人聊天提示，每輪一次。\n主介面或倒數浮窗關閉時仍會提醒；未知或逾時不提醒。關閉後不補發該輪已略過的提醒。");
             if (locations.Count > 0)
             {
                 ImGui.TextColored(Muted, "北罐／南罐座標 · 固定地點");

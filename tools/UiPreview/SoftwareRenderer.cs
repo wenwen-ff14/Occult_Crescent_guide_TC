@@ -31,7 +31,9 @@ internal static class SoftwareRenderer
         WritePng(path, width, height, pixels);
     }
 
-    private static float Edge(Vector2 a, Vector2 b, Vector2 p) => (p.X - a.X) * (b.Y - a.Y) - (p.Y - a.Y) * (b.X - a.X);
+    // Evaluate reversed shared edges symmetrically so large image quads have no diagonal cracks.
+    private static double Edge(Vector2 a, Vector2 b, Vector2 p) => ((double)b.Y - a.Y) * p.X +
+        ((double)a.X - b.X) * p.Y + (double)a.Y * b.X - (double)a.X * b.Y;
     private static bool TopLeft(Vector2 a, Vector2 b) => a.Y < b.Y || (a.Y == b.Y && a.X > b.X);
 
     private static void Triangle(byte[] pixels, int width, int height, ImDrawVert a, ImDrawVert b, ImDrawVert c, Vector4 clip, Texture texture)
@@ -49,7 +51,7 @@ internal static class SoftwareRenderer
             var p = new Vector2(x + 0.5f, y + 0.5f);
             var e0 = Edge(b.Pos, c.Pos, p); var e1 = Edge(c.Pos, a.Pos, p); var e2 = Edge(a.Pos, b.Pos, p);
             if (e0 < 0 || e1 < 0 || e2 < 0 || (e0 == 0 && !TopLeft(b.Pos, c.Pos)) || (e1 == 0 && !TopLeft(c.Pos, a.Pos)) || (e2 == 0 && !TopLeft(a.Pos, b.Pos))) continue;
-            var w0 = e0 / area; var w1 = e1 / area; var w2 = e2 / area;
+            var w0 = (float)(e0 / area); var w1 = (float)(e1 / area); var w2 = (float)(e2 / area);
             var uv = a.Uv * w0 + b.Uv * w1 + c.Uv * w2;
             var tx = Math.Clamp((int)(uv.X * texture.Width), 0, texture.Width - 1);
             var ty = Math.Clamp((int)(uv.Y * texture.Height), 0, texture.Height - 1);

@@ -6,12 +6,13 @@ using Lumina.Data.Files;
 using Lumina.Data.Parsing.Layer;
 using System.Text.Json;
 
-if (args.Length is < 1 or > 2) throw new ArgumentException("Supply the game's sqpack directory and optional --sightseeing, --pot-fates or --ce-triggers.");
+if (args.Length is < 1 or > 2) throw new ArgumentException("Supply the game's sqpack directory and optional --sightseeing, --pot-fates, --ce-triggers or --ce-map.");
 AssemblyLoadContext.Default.Resolving += (context, name) => name.Name == "Lumina"
     ? context.LoadFromAssemblyPath(Path.Combine(AppContext.BaseDirectory, "Lumina.dll")) : null;
 if (args.Length == 2 && args[1] == "--sightseeing") SightseeingAudit.Run(args[0]);
 else if (args.Length == 2 && args[1] == "--pot-fates") PotFateAudit.Run(args[0]);
 else if (args.Length == 2 && args[1] == "--ce-triggers") CeTriggerAudit.Run(args[0]);
+else if (args.Length == 2 && args[1] == "--ce-map") CeMapAudit.Run(args[0]);
 else Audit.Run(args[0]);
 
 internal static class Audit

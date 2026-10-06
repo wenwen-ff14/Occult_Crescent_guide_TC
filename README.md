@@ -2,11 +2,20 @@
 
 繁中服 Dalamud API 13 插件，支援寶箱巡查、魔法罐、FATE／CE、探索筆記、標點預設與幻影職業巨集。輸入 `/crescent` 開啟。
 
-## 0.10.5 更新內容 · 2026-10-05
+## 0.10.14 更新內容 · 2026-10-06
+
+- **魔法罐 5 分鐘提醒**：下一場南／北罐預估倒數進入 5 分鐘內時，顯示一次彈出通知與個人聊天提示，包含位置方向和預估時間。預設開啟，可在「魔法罐」頁或選單獨立關閉；關閉主介面與倒數浮窗仍會提醒。詳見 [魔法罐計時說明](docs/POT_FATE_TIMERS.md)。
+
+- **巡查設定簡化**：固定使用南部 68 點編號路線與全島已知位置，移除兩個模式選單。開箱或確認近距離空點後固定自動標記下一站，移除勾選與空點判定距離調整；內部沿用 60 公尺規則。舊設定自動套用固定值，起點與其他偏好保留。詳見 [巡查說明](docs/CHEST_CHART.md)。
+
+- **巡查進度浮窗**：在「巡查」或「設定」勾選「在畫面顯示巡查進度」，主介面關閉後仍可查看下一站與進度，直接按「下一站／暫停或繼續／終止」。預設關閉；可拖曳標題、保存及鎖定位置，鎖定後按鈕仍可操作。完成、終止或尚未巡查時自動隱藏，可與魔法罐倒數同時顯示。詳見 [巡查浮窗說明](docs/PATROL_OVERLAY.md)。
+- **魔法罐倒數浮窗**：在「魔法罐」或「設定」勾選「在畫面顯示魔法罐倒數」，主介面關閉後仍顯示下一場南／北罐預估倒數。預設關閉；按「調整位置」後拖曳浮窗，再按「完成調整」鎖定並讓滑鼠穿透。詳見 [魔法罐計時說明](docs/POT_FATE_TIMERS.md)。
+- **CE 冷卻地圖**：`/crescent ce` 顯示新月島南部原生地圖，15 個 CE 的原生 BOSS／戰鬥圖標、名稱與預估倒數會隨地圖同比例縮放，點擊範圍也同步調整。點選 BOSS 後，可直接點擊 BOSS 或觸發怪座標插旗；支援縮放與拖曳。詳見 [CE 地圖說明](docs/CE_COOLDOWNS.md)。
 
 - **背包整理**：`/crescent loot` 開啟 292 種已記錄寶箱物品清單；逐項保留／垃圾、搜尋與背包數量。
 - **自動處理**：島內自動丟棄、開啟一般 NPC 商店後自動售出；預設全部保留，明確啟動後才處理。詳見 [背包整理說明](docs/LOOT_CLEANUP.md)。
 - **連續售出修正**：支援停留在出售或回購列表售出背包垃圾；售出後自動切到回購頁也會繼續，不需切換分頁。
+- **未組隊好友顯示**：隱藏玩家加入角色專屬好友快取；先在島外開啟好友名單約 2 秒，確認快取人數後再進島。詳見 [玩家顯示說明](docs/PLAYER_VISIBILITY.md)。
 
 既有功能：
 
@@ -15,7 +24,7 @@
 - **快捷列職業圖示**：單行職業巨集的預設 M 自動換成對應圖示；關閉巨集編輯視窗後套用，也可輸入 `/crescent jobicons` 立即更新。
 - **標點預覽**：新增俯視圖與力之塔四個王房的場地輪廓示意。
 
-1172 項核心檢查與離線介面檢查通過；遊戲內丟棄／售出及巨集圖示保存仍待實測。[詳細更新紀錄](CHANGELOG.md)
+1245 項核心檢查通過，包含魔法罐 5 分鐘提醒的時間邊界、去重、校正與換分流處理。既有浮窗和介面亦有離線驗證；CE 地圖位置與圖標已核對繁中客戶端。遊戲內 5 分鐘提醒、浮窗、CE 座標插旗、好友顯示、丟棄／售出及巨集圖示保存仍待實測。[詳細更新紀錄](CHANGELOG.md)
 
 ## 安裝
 
@@ -27,10 +36,12 @@ https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/plug
 
 重新整理插件列表，搜尋 **CrescentCompass** 安裝或更新。地形路線需搭配相容 API 13 的 vnavmesh。
 
-[下載 0.9.7](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/raw/refs/heads/main/packages/CrescentCompass/0.9.7.0.zip) · [使用說明](USER_GUIDE.md) · [職業巨集說明](docs/PHANTOM_JOBS.md) · [建置方式](BUILDING.md)
+[下載 0.10.14](https://github.com/wenwen-ff14/Occult_Crescent_guide_TC/raw/refs/heads/main/packages/CrescentCompass/0.10.14.0.zip) · [使用說明](USER_GUIDE.md) · [職業巨集說明](docs/PHANTOM_JOBS.md) · [建置方式](BUILDING.md)
 
 自動開箱預設關閉，需在「巡查」或「設定」勾選啟用。
 
-![幻影職業與巨集介面（離線示範）](docs/previews/phantom-jobs.png)
+![巡查與魔法罐浮窗（主介面已關閉，示範資料）](docs/previews/patrol-overlay-both.png)
+
+![CE 冷卻地圖（離線示範，倒數為示範資料）](docs/previews/ce-cooldowns.png)
 
 AGPL-3.0-or-later。第三方資料與授權見 [NOTICE](third-party/NOTICE.md)。

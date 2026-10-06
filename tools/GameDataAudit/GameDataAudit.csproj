@@ -6,8 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../CrescentCompass.Core/CrescentCompass.Core.csproj" />
     <Reference Include="Lumina"><HintPath>../../.sdk/Lumina.dll</HintPath></Reference>
     <Reference Include="Lumina.Excel"><HintPath>../../.sdk/Lumina.Excel.dll</HintPath></Reference>
+    <PackageReference Include="BCnEncoder.Net" Version="2.2.1" />
     <Reference Include="Microsoft.Extensions.ObjectPool"><HintPath>../../.sdk/Microsoft.Extensions.ObjectPool.dll</HintPath></Reference>
   </ItemGroup>
 </Project>

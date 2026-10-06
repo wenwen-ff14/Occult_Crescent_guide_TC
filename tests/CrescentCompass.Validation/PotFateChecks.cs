@@ -119,5 +119,64 @@ internal static class PotFateChecks
         check(tracker.Snapshot(start.AddSeconds(6)).ExpectedAt is null, "Explicit territory transition reset prevents reuse when instance number is recycled");
         check(Scan(7, [Fate(phase: (PotFatePhase)99)]).Count == 0 && tracker.Snapshot(start.AddSeconds(7)).Next is null,
             "Unknown FATE phase cannot create a false active event");
+
+        tracker.Reset(); Scan(0);
+        check(tracker.TakeUpcomingReminder(start, true) is null, "Unknown countdown cannot produce a five-minute reminder");
+        Scan(0, [Fate()]); Scan(1499);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1499), true) is null, "Five-minute reminder does not fire one second early");
+        Scan(1500);
+        var reminder = tracker.TakeUpcomingReminder(start.AddSeconds(1500), true);
+        check(reminder?.Definition.Id == 1977 && reminder.ExpectedAt == start.AddMinutes(30),
+            "Exactly five minutes remaining reminds for the next south pot, not the observed north pot");
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1500), true) is null, "Repeated reminder polling cannot duplicate the notice");
+        Scan(1501);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1501), true) is null, "Fresh scans in the same reminder window cannot repeat the notice");
+        check(Scan(1800, [Fate(1977, epoch: start.AddMinutes(30).ToUnixTimeSeconds())]).Count == 1,
+            "The earlier reminder does not suppress the separate actual-spawn notification");
+        check(tracker.TakeUpcomingReminder(start.AddMinutes(30), true) is null, "Observing the next spawn replaces the old reminder deadline");
+        Scan(3300);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(3300), true)?.Definition.Id == 1976, "A new observed cycle can remind for the north pot");
+        Scan(3600, [Fate(epoch: start.AddHours(1).ToUnixTimeSeconds())]); Scan(5100);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(5100), true)?.Definition.Id == 1977, "The same FATE ID can remind again in a later cycle");
+
+        tracker.Reset(); Scan(0, [Fate()], notify: false); Scan(1500, notify: false);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1500), true) is not null, "Five-minute reminders work with spawn notifications disabled");
+        tracker.Reset(); Scan(0, [Fate()]); Scan(1500);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1500), false) is null, "Muted reminder does not emit a notification");
+        Scan(1501);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1501), true) is null, "Re-enabling reminders does not replay a muted cycle");
+        check(tracker.Snapshot(start.AddSeconds(1501)).ExpectedAt == start.AddMinutes(30), "Muting a reminder does not discard the countdown");
+
+        tracker.Reset(); Scan(0, [Fate()]);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1500), true) is null, "Loading or failed scans cannot announce from stale state");
+        Scan(1560);
+        reminder = tracker.TakeUpcomingReminder(start.AddSeconds(1560), true);
+        check(reminder?.ExpectedAt - start.AddSeconds(1560) == TimeSpan.FromMinutes(4), "Resuming inside the window emits once with the actual remaining time");
+        tracker.Reset(); Scan(0, [Fate()]); Scan(1800);
+        check(tracker.TakeUpcomingReminder(start.AddMinutes(30), true) is null, "No five-minute reminder at the estimated spawn deadline");
+        Scan(5400);
+        check(tracker.TakeUpcomingReminder(start.AddMinutes(90), true) is null, "Overdue estimates do not invent reminders for later cycles");
+
+        tracker.Reset(); Scan(120, [Fate(epoch: 0)]); Scan(1620);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1620), true)?.ExpectedAt == start.AddSeconds(1920),
+            "First-observation estimates also support five-minute reminders");
+        Scan(1621, [Fate()]);
+        check(tracker.Snapshot(start.AddSeconds(1621)).ExpectedAt == start.AddMinutes(30) &&
+            tracker.TakeUpcomingReminder(start.AddSeconds(1621), true) is null, "Correcting a previously reminded cycle cannot replay its notice");
+        tracker.Reset(); Scan(120, [Fate(epoch: 0)]); Scan(1500, [Fate()]);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1500), true)?.ExpectedAt == start.AddMinutes(30),
+            "A newly corrected deadline inside the window can emit its first reminder");
+
+        tracker.Reset(); Scan(0, [Fate()]); Scan(1500, instance: 2);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1500), true) is null, "Changing island instance clears the previous countdown reminder");
+        Scan(1501, [Fate(epoch: start.AddSeconds(1501).ToUnixTimeSeconds())], instance: 2); Scan(3001, instance: 2);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(3001), true) is not null, "A newly observed island instance gets its own reminder");
+        tracker.Reset();
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(3001), true) is null, "Logout or explicit reset clears pending reminders");
+        Scan(0, [Fate(2072, 1346)], territory: 1346); Scan(1500, territory: 1346);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1499), true) is null, "A backward clock cannot emit before the latest observation");
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1500), true)?.Definition.Id == 2073, "North Horn reminders use its own pot definitions");
+        Scan(1501, territory: 1);
+        check(tracker.TakeUpcomingReminder(start.AddSeconds(1501), true) is null, "Leaving supported areas clears reminder state");
     }
 }

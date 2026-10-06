@@ -60,8 +60,10 @@ public sealed partial class Plugin : IDalamudPlugin
         SpotCatalog.IsSupported(Client.TerritoryType) && !IsLoading && !Client.IsGPosing &&
         !Conditions[ConditionFlag.WatchingCutscene] && !Conditions[ConditionFlag.WatchingCutscene78] && !Conditions[ConditionFlag.OccupiedInCutSceneEvent];
     internal string PlayerVisibilityDetail => playerVisibility.Faulted ? "玩家顯示更新失敗，已暫停隱藏；可關閉後重新開啟。" :
-        !Config.HideOtherPlayers ? "只在新月島生效，預設關閉。" : !PlayerVisibilityActive ? "等待進入新月島；傳送、過場與合照模式暫停隱藏。" :
-        $"已隱藏 {playerVisibility.HiddenCount} 名玩家模型 · 保留自己、小隊、好友及倒地者";
+        !Config.HideOtherPlayers ? $"只在新月島生效，預設關閉。{playerVisibility.FriendDetail}" :
+        !PlayerVisibilityActive ? $"等待進入新月島；傳送、過場與合照模式暫停隱藏。{playerVisibility.FriendDetail}" :
+        !playerVisibility.HasFriendRoster ? "尚無此角色的好友快取，暫停隱藏。請在島外開啟好友名單，等待快取完成再進島。" :
+        $"已隱藏 {playerVisibility.HiddenCount} 名玩家模型 · 好友快取 {playerVisibility.FriendCount} 人 · 保留自己、小隊、好友及倒地者";
     private readonly ConcurrentQueue<(TreasureSurvey Survey, ushort Territory, uint Instance)> treasureSurveys = new();
     private IReadOnlyList<Observation> lastObservations = [];
     private readonly WindowSystem windows = new("CrescentCompass");
@@ -122,14 +124,11 @@ public sealed partial class Plugin : IDalamudPlugin
     public Plugin()
     {
         Config = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-        if (Config.Version < 3)
+        if (Config.Version < 4)
         {
-            Config.DisplayMode = PointDisplayMode.Observed;
-            Config.Version = 3;
+            Config.Version = 4;
             PluginInterface.SavePluginConfig(Config);
         }
-        if (!Enum.IsDefined(Config.DisplayMode)) Config.DisplayMode = PointDisplayMode.Observed;
-        Config.EmptyCheckRadius = RouteAutomation.NormalizeRadius(Config.EmptyCheckRadius);
         Config.ChartStartNumber = Math.Clamp(Config.ChartStartNumber, 1, ChestChart.Count);
         Config.ChestProgress ??= [];
         InitializeLoot();
@@ -212,7 +211,7 @@ public sealed partial class Plugin : IDalamudPlugin
         UpdateWaymarks();
         if (retryPlayerVisibility) { retryPlayerVisibility = false; playerVisibility.Retry(); }
         // Must run before the patrol's loading/territory early returns so island exits also restore models.
-        playerVisibility.Update(Config.HideOtherPlayers && PlayerVisibilityActive);
+        playerVisibility.Update(Config.HideOtherPlayers && PlayerVisibilityActive, Config);
         var now = Environment.TickCount64;
         var change = patrolContext.Update(Client.IsLoggedIn, IsLoading, Objects.LocalPlayer is not null, Client.TerritoryType, Client.Instance, now);
         if (change == PatrolContextChange.Suspended) { SuspendPatrol(); return; }
@@ -311,6 +310,18 @@ public sealed partial class Plugin : IDalamudPlugin
                     InitialDuration = TimeSpan.FromSeconds(10),
                 });
             }
+            if (PotFates.TakeUpcomingReminder(now, Config.NotifyPotFateSoon) is { } reminder)
+            {
+                var side = reminder.Definition.Side == "北側" ? "北罐" : "南罐";
+                var seconds = (int)Math.Ceiling((reminder.ExpectedAt - now).TotalSeconds);
+                var message = $"{side} · {reminder.Definition.Name} · 預估再 {seconds / 60:00}:{seconds % 60:00} 出現（{reminder.ExpectedAt.ToLocalTime():HH:mm:ss}）。實際時間以遊戲出現為準。";
+                Chat.Print($"[新月島羅盤] 魔法罐預估 5 分鐘內出現：{message}");
+                Notifications.AddNotification(new Notification
+                {
+                    Title = "魔法罐預估 5 分鐘內出現", Content = message, Type = NotificationType.Info,
+                    InitialDuration = TimeSpan.FromSeconds(10),
+                });
+            }
         }
         catch (Exception error)
         {
@@ -322,6 +333,12 @@ public sealed partial class Plugin : IDalamudPlugin
     internal void SetPotFateNotify(bool enabled)
     {
         Config.NotifyPotFateSpawn = enabled;
+        PluginInterface.SavePluginConfig(Config);
+    }
+
+    internal void SetPotFateSoonNotify(bool enabled)
+    {
+        Config.NotifyPotFateSoon = enabled;
         PluginInterface.SavePluginConfig(Config);
     }
 
@@ -414,20 +431,6 @@ public sealed partial class Plugin : IDalamudPlugin
         return completed + skipped == Route.Stops.Count
             ? $"本輪巡查結束：已巡查 {completed} 站，略過 {skipped} 站。"
             : "目前路線已無可用站點；尚未巡查的目標可在靠近後重新規劃。";
-    }
-
-    internal void SetAutoAdvance(bool enabled)
-    {
-        Config.AutoAdvanceChests = enabled;
-        routeAutomation.Reset();
-        PluginInterface.SavePluginConfig(Config);
-    }
-
-    internal void SetEmptyCheckRadius(float radius)
-    {
-        Config.EmptyCheckRadius = RouteAutomation.NormalizeRadius(radius);
-        routeAutomation.ResetInspection();
-        PluginInterface.SavePluginConfig(Config);
     }
 
     internal void SetPotAutoFlag(bool enabled)
@@ -782,6 +785,8 @@ public sealed partial class Plugin : IDalamudPlugin
     {
         using (new Ui.CompassTheme()) windows.Draw();
         window.DrawWorldHints();
+        DrawPotCountdownOverlay();
+        DrawPatrolOverlay();
     }
 
     public void Dispose()

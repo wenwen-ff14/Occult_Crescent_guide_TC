@@ -15,6 +15,7 @@ internal sealed partial class CompassView
     internal (Vector2 Origin, Vector2 Size) MapArea { get; private set; }
     internal float MapZoom => mapViewport.Zoom;
     internal float PageScroll { get; private set; }
+    internal Dictionary<string, Vector2> PatrolSettingsTargets { get; } = new();
     private static int Completed(CompassViewState state) => state.CompletedStops ?? Math.Max(0, state.TotalStops - state.Route.Count - state.SkippedStops);
     private float U(float value) => value * scale;
     internal static string KindName(SpotKind kind) => kind switch
@@ -55,11 +56,12 @@ internal sealed partial class CompassView
         if (ImGui.BeginChild($"feature-page-{Page}", Vector2.Zero, true))
         {
             var destination = Destinations.Single(d => d.Page == Page);
-            DrawSection(destination.Title, destination.Detail, accent);
+            if (Page != CompassPage.Ce) DrawSection(destination.Title, destination.Detail, accent);
             switch (Page)
             {
                 case CompassPage.Loot: DrawLoot(state, actions); break;
                 case CompassPage.Patrol:
+                    DrawPatrolOverlayControls(state, actions);
                     DrawStats(state);
                     if (state.Active) DrawJourney(state, actions);
                     if (state.Active) DrawSurvey(state);
@@ -73,6 +75,7 @@ internal sealed partial class CompassView
                     DrawFooter(state, actions);
                     break;
                 case CompassPage.Pot:
+                    DrawPotOverlayControls(state, actions);
                     if (state.Active)
                     {
                         DrawFates(state, actions); DrawPot(state, actions);
@@ -96,6 +99,12 @@ internal sealed partial class CompassView
 
     private void DrawHeader(CompassViewState state)
     {
+        if (Page == CompassPage.Ce)
+        {
+            ImGui.TextColored(Sky, $"CRESCENT COMPASS / {state.PluginVersion} · 新月島 CE 地圖");
+            ImGui.Spacing();
+            return;
+        }
         var origin = ImGui.GetCursorScreenPos(); var width = ImGui.GetContentRegionAvail().X;
         var draw = ImGui.GetWindowDrawList();
         draw.AddRectFilled(origin, origin + new Vector2(width, U(91)), Pack(Raised), U(12));
@@ -162,9 +171,9 @@ internal sealed partial class CompassView
     private void DrawFilters(CompassViewState state, CompassActions actions)
     {
         var filters = state.Filters;
-        if (state.Controls?.ChartMode != true || ImGui.CollapsingHeader("其他地點與顯示篩選"))
+        if (PatrolDetails("其他地點與顯示篩選", "filters", state))
         {
-        ImGui.AlignTextToFramePadding(); ImGui.TextColored(Muted, "巡查目標"); ImGui.SameLine();
+        ImGui.AlignTextToFramePadding(); ImGui.TextColored(Muted, "地點顯示"); ImGui.SameLine();
         if (Chip("蘿蔔", filters.Carrots, Carrot)) filters = filters with { Carrots = !filters.Carrots };
         ImGui.SameLine(); if (Chip("銀箱", filters.Silver, Silver)) filters = filters with { Silver = !filters.Silver };
         ImGui.SameLine(); if (Chip("銅箱", filters.Bronze, Bronze)) filters = filters with { Bronze = !filters.Bronze };
@@ -172,25 +181,17 @@ internal sealed partial class CompassView
         HoverHint("顯示已載入的事件寶箱與其他模型寶箱；不代表所有隱藏寶箱已被揭露。");
         ImGui.SameLine(); if (Chip("塔內／獎勵", filters.Tower, Mint)) filters = filters with { Tower = !filters.Tower };
         HoverHint("包含南區 14 個 BA_treasure 場景候選點。塔內有樓層與機關限制，需自行確認可達性。");
-        if (filters.Exploration) ImGui.TextColored(KindColor(SpotKind.Exploration), "已納入島上探索筆記 · 可至「探索筆記」選單調整");
-        var mode = (int)filters.DisplayMode;
-        ImGui.SetNextItemWidth(U(200));
-        if (ImGui.Combo("物件顯示範圍", ref mode, "全島已知位置\0目前可選取\0全島候選巡查\0")) filters = filters with { DisplayMode = (PointDisplayMode)mode };
-        HoverHint("全島已知位置：本場曾偵測為可選取且未記為已巡查的物件，離開視野仍保留。\n目前可選取：限已載入目標。\n全島候選巡查：另加入固定候選位置，並非你目前可開的寶箱。\n探索筆記地點使用獨立開關，不受此範圍限制。");
+        if (filters.Exploration) ImGui.TextColored(KindColor(SpotKind.Exploration), "已顯示島上探索筆記 · 可至「探索筆記」選單調整");
+        ImGui.TextColored(Muted, "全島已知位置 · 保留本場曾見目標");
+        HoverHint("本場曾偵測為可選取且未記為已巡查的物件，離開視野仍保留；不代表目前可開的所有寶箱。\n地點篩選只影響清單與場景提示，南部 68 點巡查仍依編號進行。探索筆記有獨立的未探索篩選。");
         if (filters.Exploration && state.Active && state.Region.Contains("北")) ImGui.TextWrapped("北部探索地點尚未由本機繁中資料核對，本版不提供推測位置。");
         if (filters != state.Filters) actions.SetFilters(filters);
         }
         DrawAutoChestControl(state, actions);
-        var autoAdvance = state.AutoAdvanceChests;
-        if (ImGui.Checkbox("開箱或近距離空點時，自動標記下一站", ref autoAdvance)) actions.SetAutoAdvance?.Invoke(autoAdvance);
-        HoverHint("確認開箱後插下一旗；水平與步行路程都在判定範圍內、高差不超過 8 公尺，連續 3 秒沒有可用箱則略過。導航未就緒或仍需繞路時等待。\n探索筆記啟用未探索篩選時，遊戲確認完成目前站也會換旗；蘿蔔需手動巡查。互動、讀條、過場與魔法罐尋寶時暫停換旗。");
-        if (state.Controls?.ChartMode != true || ImGui.CollapsingHeader("空點距離與地形狀態"))
+        ImGui.TextColored(Muted, "開箱或確認近距離空點後，自動標記下一站");
+        HoverHint("確認開箱後插下一旗；水平與步行路程都在 60 公尺內、高差不超過 8 公尺，連續 3 秒沒有可用箱則略過。導航未就緒或仍需繞路時等待。\n互動、讀條、過場、手動暫停與魔法罐尋寶時暫停換旗。");
+        if (PatrolDetails("巡查與地形狀態", "status", state))
         {
-        ImGui.BeginDisabled(!autoAdvance);
-        var radius = state.EmptyCheckRadius;
-        ImGui.SetNextItemWidth(U(210));
-        if (ImGui.SliderFloat("空點判定距離", ref radius, 20, 100, "%.0f m")) actions.SetEmptyCheckRadius?.Invoke(radius);
-        ImGui.EndDisabled();
         ImGui.TextWrapped($"自動巡查：{state.AutomationDetail}");
         ImGui.TextWrapped($"步行路線：{state.NavigationDetail}");
         }
@@ -200,8 +201,16 @@ internal sealed partial class CompassView
         ImGui.BeginDisabled(state.Controls?.ChartMode == true && !state.Region.Contains("南"));
         if (PrimaryButton(state.Controls?.ChartMode == true ? $"從 #{state.Controls.StartNumber:00} 開始" : state.TotalStops > 0 ? "重新規劃路線" : "規劃巡查路線", new Vector2(U(158), U(34)))) actions.Plan();
         ImGui.SameLine(); if (ImGui.Button("重新巡查", new Vector2(U(106), U(34)))) actions.Restart();
-        HoverHint("保留本場已巡查與略過記錄。圖表模式從上輪未完成的首點接續，維持編號順序；最短模式優先未巡查點。若要全部重跑，使用「設定」選單中的清除紀錄。");
+        HoverHint("保留本場已巡查與略過記錄，從上輪未完成的首點接續，維持南部 68 點編號順序。若要全部重跑，使用「設定」選單中的清除紀錄。");
         ImGui.EndDisabled(); ImGui.EndDisabled(); ImGui.SameLine(); ImGui.AlignTextToFramePadding(); ImGui.TextColored(Muted, state.Controls?.ChartMode == true ? "保留已巡查紀錄" : "從目前位置出發");
+    }
+
+    private bool PatrolDetails(string label, string key, CompassViewState state)
+    {
+        if (state.Controls?.ChartMode != true) return true;
+        var open = ImGui.CollapsingHeader(label);
+        PatrolSettingsTargets[key] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        return open;
     }
 
     private void DrawLists(CompassViewState state, CompassActions actions)

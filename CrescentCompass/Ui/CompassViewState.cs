@@ -14,8 +14,12 @@ internal sealed record CompassRouteControls(bool ChartMode, int StartNumber, boo
     IReadOnlyList<CompassPoint> ChartPoints, int MapRevision = 0);
 internal sealed record CompassFatePoint(ushort Id, string Name, string Coordinates, string Status, bool CanFlag = true);
 internal sealed record CompassFateState(bool Notify, string Countdown, string NextName, string Detail, IReadOnlyList<CompassFatePoint> Active,
-    IReadOnlyList<CompassFatePoint>? Locations = null);
+    IReadOnlyList<CompassFatePoint>? Locations = null, bool NotifySoon = true);
 internal sealed record CompassCeState(bool Enabled, CeCooldownSnapshot Snapshot, DateTimeOffset Now);
+internal sealed record CompassPotOverlayOptions(bool Enabled, bool Locked);
+internal sealed record CompassPotOverlayActions(Action<bool> SetVisible, Action<bool> SetLocked, Action ResetPosition);
+internal sealed record CompassPatrolOverlayOptions(bool Enabled, bool Locked);
+internal sealed record CompassPatrolOverlayActions(Action<bool> SetVisible, Action<bool> SetLocked, Action ResetPosition);
 internal sealed record CompassGeneralFates(bool AutoFlag, bool Holding, string Detail, IReadOnlyList<CompassFatePoint> Active);
 internal sealed record CompassWaymarkState(IReadOnlyList<WaymarkPreset> Presets, bool CanCapture, bool CanPlace, bool Busy, string Detail,
     string Error = "", bool Failed = false, string PlacementUnavailableReason = "", Guid SelectionRequest = default, int SelectionRevision = 0,
@@ -28,24 +32,27 @@ internal sealed record CompassViewState(
     bool Active, string Region, Vector3 Position, CompassFilters Filters, bool WorldHints,
     IReadOnlyList<CompassPoint> Points, IReadOnlyList<CompassPoint> Route,
     int TotalStops, double PlannedDistance, bool Exact, bool RouteChanged, string Message, CompassPotState? Pot = null, int? CompletedStops = null, TreasureSurvey? TreasureSurvey = null,
-    bool AutoAdvanceChests = true, int SkippedStops = 0, float EmptyCheckRadius = RouteAutomation.CheckRadius,
+    int SkippedStops = 0,
     string AutomationDetail = "先規劃路線，再開始自動巡查。", CompassFateState? Fates = null,
     bool Planning = false, string NavigationDetail = "地形導航已就緒", IReadOnlyList<RouteLeg>? GroundLegs = null,
     IReadOnlyList<Spot>? Unreachable = null, bool Transit = false,
     string ExplorationDetail = "等待角色探索紀錄；未讀取前不列入未探索清單。",
     bool HideOtherPlayers = false, string PlayerVisibilityDetail = "只在新月島生效，預設關閉。", CompassRouteControls? Controls = null,
     CompassCeState? Ce = null, string PluginVersion = "預覽", CompassGeneralFates? GeneralFates = null, CompassWaymarkState? Waymarks = null,
-    bool AutoOpenNearbyChests = false, string AutoChestDetail = "關閉；勾選後自動開啟 2 公尺內的寶箱。", CompassPhantomJobs? PhantomJobs = null, CompassLootState? Loot = null);
+    bool AutoOpenNearbyChests = false, string AutoChestDetail = "關閉；勾選後自動開啟 2 公尺內的寶箱。", CompassPhantomJobs? PhantomJobs = null, CompassLootState? Loot = null,
+    CompassPotOverlayOptions? PotOverlay = null, CompassPatrolOverlayOptions? PatrolOverlay = null);
 internal sealed record CompassActions(
     Action<CompassFilters> SetFilters, Action<bool> SetWorldHints, Action Plan,
     Action<Spot?> Flag, Action Next, Action Restart,
-    Action<bool>? SetPotAutoFlag = null, Action? FlagPot = null, Action? RestartPot = null, Action<int>? PotHint = null, Action<bool>? SetAutoAdvance = null,
-    Action<float>? SetEmptyCheckRadius = null, Action? ClearSurvey = null,
+    Action<bool>? SetPotAutoFlag = null, Action? FlagPot = null, Action? RestartPot = null, Action<int>? PotHint = null, Action? ClearSurvey = null,
     Action<bool>? SetPotFateNotify = null, Action<ushort>? FlagPotFate = null, Action<ushort>? FlagPotFateLocation = null,
     Action? CancelPlanning = null, Action<bool>? SetHideOtherPlayers = null,
-    Action<bool>? SetChartMode = null, Action<int>? SetChartStart = null, Action? ContinueAfterLast = null,
+    Action<int>? SetChartStart = null, Action? ContinueAfterLast = null,
     Action? Pause = null, Action? Resume = null, Action? Stop = null, Action? ConfirmOpened = null,
     Action<bool>? SetCeTracking = null, Action? ClearCeCooldowns = null,
     Action<bool>? SetFateAutoFlag = null, Action? ReleaseFateNavigation = null, Action<ushort>? FlagGeneralFate = null, CompassWaymarkActions? Waymarks = null,
     Action<bool>? SetAutoOpenNearbyChests = null, Action<byte>? SwitchPhantomJob = null,
-    Func<uint, Vector2, bool>? DrawPhantomJobIcon = null, Action<string>? CopyPhantomMacro = null, Action? RefreshPhantomMacroIcons = null, CompassLootActions? Loot = null);
+    Func<uint, Vector2, bool>? DrawPhantomJobIcon = null, Action<string>? CopyPhantomMacro = null, Action? RefreshPhantomMacroIcons = null, CompassLootActions? Loot = null,
+    Func<string, ulong>? GetGameTexture = null, Action<ushort, bool>? FlagCeLocation = null,
+    CompassPotOverlayActions? PotOverlay = null, CompassPatrolOverlayActions? PatrolOverlay = null,
+    Action<bool>? SetPotFateSoonNotify = null);

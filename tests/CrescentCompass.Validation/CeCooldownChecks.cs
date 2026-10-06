@@ -4,6 +4,15 @@ internal static class CeCooldownChecks
 {
     internal static void Run(Action<bool, string> check)
     {
+        check(CeMapCatalog.All.Select(p => p.Id).Order().SequenceEqual(CeCooldownTracker.Definitions.Select(d => d.Id).Order()), "Map contains all and only South Horn CE IDs");
+        check(CeMapCatalog.All.Count(p => p.TriggerMapPosition is not null) == 6, "Map has six distinct trigger destinations");
+        foreach (var definition in CeCooldownTracker.Definitions)
+            check((CeMapCatalog.FlagPosition(definition.Id, true) is not null) == definition.MobTriggered, $"CE {definition.Id}: only mob triggers have a trigger flag");
+        check(System.Numerics.Vector2.Distance(CeMapCatalog.ToMap(new(300, 730)), new(27.48f, 36.08f)) < 0.001f, "Audited CE world position projects to map 967 coordinates");
+        check(CeMapCatalog.FlagPosition(33, false) == new System.Numerics.Vector2(300, 730), "Boss flag preserves audited world X/Z");
+        check(System.Numerics.Vector2.Distance(CeMapCatalog.FlagPosition(33, true)!.Value, new(226, 576)) < 0.01f, "Crescent Monk flag uses trigger coordinates, not the CE arena");
+        check(System.Numerics.Vector2.Distance(CeMapCatalog.FlagPosition(39, true)!.Value, new(-824, 176)) < 0.01f, "Western trigger map link preserves negative world coordinates");
+        check(CeMapCatalog.FlagPosition(48, false) is null && CeMapCatalog.FlagPosition(1976, true) is null, "Tower and pot cannot become CE flag destinations");
         var time = DateTimeOffset.FromUnixTimeSeconds(1_800_000_000);
         var tracker = new CeCooldownTracker();
         CeObservation Row(ushort id = 33, CePhase phase = CePhase.Battle, int progress = 0) => new(id, phase, progress);

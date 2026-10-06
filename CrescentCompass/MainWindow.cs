@@ -21,12 +21,16 @@ internal sealed class MainWindow : Window
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(650, 560), MaximumSize = new Vector2(1600, 1600) };
         actions = new CompassActions(SetFilters, SetWorldHints, plugin.Plan, plugin.Flag, plugin.Next, plugin.Restart,
-            plugin.SetPotAutoFlag, () => plugin.FlagPot(), plugin.RestartPot, plugin.ManualPotHint, plugin.SetAutoAdvance, plugin.SetEmptyCheckRadius, plugin.ClearSurvey,
+            plugin.SetPotAutoFlag, () => plugin.FlagPot(), plugin.RestartPot, plugin.ManualPotHint, plugin.ClearSurvey,
             plugin.SetPotFateNotify, plugin.FlagPotFate, plugin.FlagPotFateLocation, plugin.CancelPlanning, plugin.SetHideOtherPlayers,
-            plugin.SetChartMode, plugin.SetChartStart, plugin.ContinueAfterLastChest, plugin.PauseRoute, plugin.ResumeRoute, plugin.StopRoute, plugin.ConfirmChestOpened,
+            plugin.SetChartStart, plugin.ContinueAfterLastChest, plugin.PauseRoute, plugin.ResumeRoute, plugin.StopRoute, plugin.ConfirmChestOpened,
             plugin.SetCeTracking, plugin.ClearCeCooldowns, plugin.SetFateAutoFlag, plugin.ReleaseFateNavigation, plugin.FlagGeneralFate, plugin.WaymarkActions,
             plugin.SetAutoOpenNearbyChests, plugin.SwitchPhantomJob, Plugin.DrawPhantomJobIcon,
-            RefreshPhantomMacroIcons: plugin.RefreshPhantomMacroIcons, Loot: new(plugin.SetLootKeep, plugin.SetLootMode, plugin.SetLootArmed));
+            RefreshPhantomMacroIcons: plugin.RefreshPhantomMacroIcons, Loot: new(plugin.SetLootKeep, plugin.SetLootMode, plugin.SetLootArmed),
+            GetGameTexture: Plugin.GetGameTexture, FlagCeLocation: plugin.FlagCeLocation,
+            PotOverlay: new(plugin.SetPotOverlayVisible, plugin.SetPotOverlayLocked, plugin.ResetPotOverlayPosition),
+            PatrolOverlay: new(plugin.SetPatrolOverlayVisible, plugin.SetPatrolOverlayLocked, plugin.ResetPatrolOverlayPosition),
+            SetPotFateSoonNotify: plugin.SetPotFateSoonNotify);
     }
 
     internal static string KindName(SpotKind kind) => CompassView.KindName(kind);
@@ -63,7 +67,7 @@ internal sealed class MainWindow : Window
             new CompassPotState(plugin.Pot.Active, config.AutoFlagPot, plugin.Pot.Detail, plugin.Pot.Candidates.Count, plugin.Pot.Revealed,
                 plugin.Pot.Target is { } target ? Plugin.MapPosition(new Spot("pot-target", plugin.Pot.Territory, SpotKind.PotGold, 0, target)) : null, plugin.PotAutomationDetail),
             plugin.Route.Stops.Count(plugin.RouteStopCompleted), plugin.TreasureSurvey,
-            config.AutoAdvanceChests, plugin.Route.Stops.Count(s => plugin.Session.Get(s.Id)?.Status == SpotStatus.Skipped), config.EmptyCheckRadius, plugin.AutomationDetail, FateState(),
+            plugin.Route.Stops.Count(s => plugin.Session.Get(s.Id)?.Status == SpotStatus.Skipped), plugin.AutomationDetail, FateState(),
             plugin.IsPlanning, plugin.NavigationDetail, legs,
             plugin.WalkingRoute?.Unreachable.Where(s => plugin.Session.CanPatrol(s.Id)).ToArray(),
             plugin.PatrolSuspended, plugin.ExplorationDetail, config.HideOtherPlayers, plugin.PlayerVisibilityDetail,
@@ -75,7 +79,9 @@ internal sealed class MainWindow : Window
                     Coordinates.IsFinite(f.Position) ? Plugin.MapPosition(new Spot("fate", plugin.Session.Territory, SpotKind.Other, 0, f.Position)) : "座標尚未就緒",
                     $"{(f.Preparing ? "準備中" : $"進度 {f.Progress}%")}" + (f.EndsAt is { } end ? $" · 剩餘 {Math.Max(0, (int)(end - now).TotalMinutes):00}:{Math.Max(0, (int)(end - now).TotalSeconds) % 60:00}" : ""),
                     plugin.Active && Coordinates.IsFinite(f.Position))).ToArray()), Waymarks: plugin.WaymarkState(),
-            AutoOpenNearbyChests: config.AutoOpenNearbyChests, AutoChestDetail: plugin.AutoChestDetail, PhantomJobs: plugin.PhantomJobState, Loot: plugin.LootState), actions);
+            AutoOpenNearbyChests: config.AutoOpenNearbyChests, AutoChestDetail: plugin.AutoChestDetail, PhantomJobs: plugin.PhantomJobState, Loot: plugin.LootState,
+            PotOverlay: new(config.ShowPotCountdownOverlay, config.LockPotCountdownOverlay),
+            PatrolOverlay: new(config.ShowPatrolOverlay, config.LockPatrolOverlay)), actions);
     }
 
     private CompassFateState FateState()
@@ -103,7 +109,7 @@ internal sealed class MainWindow : Window
             return new CompassFatePoint(d.Id, location?.Name ?? $"{(d.Side == "北側" ? "北罐" : "南罐")} · {d.Name}",
                 location is null ? "座標資料尚未載入" : Plugin.MapPosition(location), "固定 FATE 地點", location is not null);
         }).ToArray();
-        return new(plugin.Config.NotifyPotFateSpawn, countdown, next, detail, points, locations);
+        return new(plugin.Config.NotifyPotFateSpawn, countdown, next, detail, points, locations, plugin.Config.NotifyPotFateSoon);
     }
 
     private void SetFilters(CompassFilters filters)
@@ -111,7 +117,6 @@ internal sealed class MainWindow : Window
         plugin.Config.IncludeCarrots = filters.Carrots;
         plugin.Config.IncludeSilver = filters.Silver;
         plugin.Config.IncludeBronze = filters.Bronze;
-        plugin.Config.DisplayMode = filters.DisplayMode;
         plugin.Config.IncludeSpecial = filters.Special;
         plugin.Config.IncludeTower = filters.Tower;
         plugin.Config.IncludeExploration = filters.Exploration;

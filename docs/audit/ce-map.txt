@@ -1,0 +1,36 @@
+CLIENT 2026.09.14.0000.0000
+MAP 967: o6b1/01, size=100, offset=0,0
+TEXTURE ui/map/o6b1/01/o6b101_m.tex: 2048x2048
+CE 33: 腦髓愛好者——奪心魔, icon=63909, location=10962704
+CE 34: 黑色連隊, icon=63911, location=10940977
+CE 35: 憤怒的人造人——新月狂戰士, icon=63909, location=10962716
+CE 36: 潛影撕裂者——死亡厲爪, icon=63909, location=10940989
+CE 37: 掙脫封印的大妖異——回廊惡魔, icon=63909, location=10941018
+CE 38: 擬造使魔——水晶龍, icon=63909, location=10962728
+CE 39: 雙極的造物——神秘土偶, icon=63909, location=10937430
+CE 40: 石製騎士團, icon=63911, location=11131960
+CE 41: 傳說中的鯊魚——尼姆瓣齒鯊, icon=63909, location=11102245
+CE 42: 雙足獅人——躍立獅, icon=63909, location=10937461
+CE 43: 防衛指令, icon=63909, location=11102367
+CE 44: 厭鳥巨獸——進化加魯拉, icon=63909, location=10941033
+CE 45: 販賣詛咒的商販——金錢龜, icon=63909, location=10962741
+CE 46: 城塞守衛——復原獅像, icon=63909, location=10937473
+CE 47: 昏暗妖魂——鬼火苗, icon=63909, location=10962753
+POSITION 33: 300, 70, 730; map=27.480,36.080; planmap.lgb
+POSITION 34: 450, 65, 357; map=30.480,28.620; planmap.lgb
+POSITION 35: 620, 79, 800; map=33.880,37.480; planmap.lgb
+POSITION 36: 681, 74, 534; map=35.100,32.160; planmap.lgb
+POSITION 37: -340, 75, 800; map=14.680,37.480; planmap.lgb
+POSITION 38: -414, 92, 75; map=13.200,22.980; planmap.lgb
+POSITION 39: -800, 44, 245; map=5.480,26.380; planmap.lgb
+POSITION 40: 680.0022, 96, -265; map=35.080,16.180; planmap.lgb
+POSITION 41: -117, 1, -850; map=19.140,4.480; planmap.lgb
+POSITION 42: 636, 108, -54; map=34.200,20.400; planmap.lgb
+POSITION 43: -352, 5, -608; map=14.440,9.320; planmap.lgb
+POSITION 44: 461, 96.99997, -363; map=30.700,14.220; planmap.lgb
+POSITION 45: 72, 20, -545; map=22.920,10.580; planmap.lgb
+POSITION 46: 870.1, 122, 180; map=38.882,25.080; planmap.lgb
+POSITION 47: -570, 97, -160; map=10.080,18.280; planmap.lgb
+TEXTURE ui/icon/063000/063909.tex: 32x32
+TEXTURE ui/icon/063000/063911.tex: 32x32
+PASS: 15 CE names/positions/icons and map projection verified against local TC data.

@@ -4,14 +4,6 @@ namespace CrescentCompass;
 
 public sealed partial class Plugin
 {
-    internal void SetChartMode(bool enabled)
-    {
-        if (Config.UseChartRoute == enabled) return;
-        StopRoute(); Config.UseChartRoute = enabled;
-        PluginInterface.SavePluginConfig(Config);
-        Message = enabled ? "已選擇南部 68 點圖表；選擇起點後開始。" : "已選擇地形最短順序；依篩選規劃。";
-    }
-
     internal void SetChartStart(int number)
     {
         Config.ChartStartNumber = Math.Clamp(number, 1, ChestChart.Count);

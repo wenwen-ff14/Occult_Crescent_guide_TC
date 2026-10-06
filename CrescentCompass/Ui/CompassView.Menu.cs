@@ -51,10 +51,13 @@ internal sealed partial class CompassView
                     if (ImGui.MenuItem("暫停巡查", "", false, hasRoute && state.Controls?.Paused != true)) actions.Pause?.Invoke();
                     if (ImGui.MenuItem("繼續巡查", "", false, hasRoute && state.Active && state.Controls?.Paused == true)) actions.Resume?.Invoke();
                     if (ImGui.MenuItem("終止巡查", "", false, hasRoute)) actions.Stop?.Invoke();
+                    if (ImGui.MenuItem("在畫面顯示巡查進度", "", state.PatrolOverlay?.Enabled == true)) actions.PatrolOverlay?.SetVisible(state.PatrolOverlay?.Enabled != true);
                     break;
                 case CompassPage.Pot:
                     if (ImGui.MenuItem("自動追蹤位置與旗標", "", state.Pot?.AutoFlag == true)) actions.SetPotAutoFlag?.Invoke(state.Pot?.AutoFlag != true);
                     if (ImGui.MenuItem("FATE 出現時通知", "", state.Fates?.Notify == true)) actions.SetPotFateNotify?.Invoke(state.Fates?.Notify != true);
+                    if (ImGui.MenuItem("預估剩 5 分鐘時通知", "", state.Fates?.NotifySoon == true)) actions.SetPotFateSoonNotify?.Invoke(state.Fates?.NotifySoon != true);
+                    if (ImGui.MenuItem("在畫面顯示魔法罐倒數", "", state.PotOverlay?.Enabled == true)) actions.PotOverlay?.SetVisible(state.PotOverlay?.Enabled != true);
                     break;
                 case CompassPage.Ce:
                     if (ImGui.MenuItem("自動記錄 CE 冷卻", "", state.Ce?.Enabled == true)) actions.SetCeTracking?.Invoke(state.Ce?.Enabled != true);
@@ -64,7 +67,7 @@ internal sealed partial class CompassView
                     if (ImGui.MenuItem("解除本次標點並接續巡查", "", false, state.GeneralFates?.Holding == true)) actions.ReleaseFateNavigation?.Invoke();
                     break;
                 case CompassPage.Exploration:
-                    if (ImGui.MenuItem("納入巡查與場景提示", "", state.Filters.Exploration)) actions.SetFilters(state.Filters with { Exploration = !state.Filters.Exploration });
+                    if (ImGui.MenuItem("顯示探索筆記與場景提示", "", state.Filters.Exploration)) actions.SetFilters(state.Filters with { Exploration = !state.Filters.Exploration });
                     if (ImGui.MenuItem("只顯示未探索地點", "", state.Filters.OnlyUnexplored)) actions.SetFilters(state.Filters with { OnlyUnexplored = !state.Filters.OnlyUnexplored });
                     break;
                 case CompassPage.Settings:
@@ -83,64 +86,33 @@ internal sealed partial class CompassView
 
     private void DrawCeCooldowns(CompassViewState state, CompassActions actions)
     {
-        CeRowsDrawn = 0;
-        ImGui.TextColored(Sky, "危命任務 · 本場冷卻紀錄");
+        CeTargets.Clear(); CeRowsDrawn = 0;
         var ce = state.Ce;
         var enabled = ce?.Enabled ?? true;
         if (ImGui.Checkbox("自動記錄 CE 冷卻", ref enabled)) actions.SetCeTracking?.Invoke(enabled);
-        HoverHint("關閉視窗或切換選單仍會追蹤。關閉此選項會保留已知結束時間，停止觀測新事件；未觀測的結束時間不補算。");
         ImGui.SameLine();
         if (ImGui.Button("清除本場 CE 紀錄")) actions.ClearCeCooldowns?.Invoke();
-        ImGui.TextWrapped("自動出現約 120 分鐘；打怪觸發約 60 分鐘。從觀測到戰鬥結束時計算，屬社群預估，非伺服器倒數；到期仍需等待事件或觸發條件。");
-        ImGui.TextWrapped("觸發怪物與位置供參考；擊殺數未確認。冷卻結束後仍需符合觸發條件。");
         var available = (state.Active || state.Transit) && state.Region.Contains("南");
-        if (!available)
-            ImGui.TextWrapped(state.Active ? "目前僅提供已核對的南部 15 個 CE；北部尚未支援。以下為南部清單。" : "進島前也可查看南部 15 個 CE；進入新月島南部後開始記錄，上島前的結束時間未知。");
-        ImGui.TextColored(available && (ce?.Enabled != true || ce.Snapshot.ScanFresh != true) ? Carrot : Muted,
-            !available ? "南部清單預覽 · 尚無本場事件資料" : state.Transit ? "傳送中 · 已知冷卻保留，暫停事件觀測" : ce?.Enabled != true ? "記錄已關閉 · 已知冷卻繼續計時" :
-            ce.Snapshot.ScanFresh ? "事件資料已更新 · 同島傳送保留紀錄，離島／換分流／重載清除" : "等待有效事件資料 · 不將讀取中斷當成戰鬥結束");
-        ImGui.Checkbox("只顯示已觀測的 CE", ref ceRecordedOnly);
+        ImGui.TextWrapped(!available ? "南部地圖預覽 · 進入南部後開始記錄，上島前冷卻未知。" :
+            state.Transit ? "傳送中 · 已知冷卻保留，暫停觀測" : !enabled ? "記錄已關閉 · 已知冷卻繼續計時" :
+            ce?.Snapshot.ScanFresh == true ? "本場紀錄 · 冷卻為預估，到期仍需符合觸發條件。" : "等待事件資料 · 未觀測的冷卻保持未知");
+        HoverHint("從觀測到戰鬥結束時計算：打怪觸發約 60 分鐘、自動出現約 120 分鐘。不是伺服器倒數；離島、換分流或重載清除本場紀錄。");
         var now = ce?.Now ?? DateTimeOffset.UtcNow;
         var snapshot = available && ce is not null ? ce.Snapshot : new CeCooldownTracker().Snapshot(now);
-        var rows = snapshot.Entries.Where(e => !ceRecordedOnly || e.LastSeen is not null)
-            .Select(e => (!state.Active || !enabled || !snapshot.ScanFresh) &&
-                e.Status is CeStatus.Register or CeStatus.Warmup or CeStatus.Battle or CeStatus.ConfirmingEnd
-                ? e with { Status = CeStatus.EndUnobserved } : e).ToArray();
-        if (rows.Length == 0) { ImGui.TextColored(Muted, "本場尚無已觀測的 CE。"); return; }
-        var height = Math.Max(U(220), ImGui.GetContentRegionAvail().Y - U(30));
-        if (!ImGui.BeginTable("ce-cooldowns", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.NoSavedSettings, new Vector2(0, height))) return;
-        ImGui.TableSetupColumn("危命任務／觸發方式", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("目前狀態", ImGuiTableColumnFlags.WidthFixed, U(133));
-        ImGui.TableSetupColumn("上次觀測結束", ImGuiTableColumnFlags.WidthFixed, U(122));
-        ImGui.TableSetupScrollFreeze(0, 1); ImGui.TableHeadersRow();
-        foreach (var row in rows.OrderBy(e => CeOrder(e.Status)).ThenBy(e => e.EligibleAt).ThenBy(e => e.Definition.Id))
-        {
-            CeRowsDrawn++;
-            ImGui.PushID(row.Definition.Id);
-            ImGui.TableNextRow(ImGuiTableRowFlags.None, U(61)); ImGui.TableNextColumn();
-            ImGui.TextWrapped(row.Definition.Name);
-            ImGui.TextColored(Muted, $"{(row.Definition.MobTriggered ? "打怪觸發" : "自動出現")} · 約 {row.Definition.Cooldown.TotalMinutes:0} 分鐘");
-            ImGui.PushStyleColor(ImGuiCol.Text, Mint);
-            ImGui.TextWrapped(row.Definition.TriggerCondition);
-            ImGui.PopStyleColor();
-            ImGui.TableNextColumn();
-            ImGui.TextColored(row.Status is CeStatus.Battle or CeStatus.Register or CeStatus.Warmup ? Mint : row.Status == CeStatus.Cooldown ? Carrot : Muted, CeLabel(row, now));
-            if (row.Status == CeStatus.Cooldown && row.EligibleAt is { } until) ImGui.TextColored(Muted, $"預估至 {until.ToLocalTime():HH:mm:ss}");
-            if (row.Status == CeStatus.Eligible) ImGui.TextColored(Muted, "等待實際觸發");
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted(row.EndedAt?.ToLocalTime().ToString("HH:mm:ss") ?? "—");
-            if (row.EndedAt is null && row.LastSeen is { } seen)
-            { ImGui.TextColored(Muted, $"看見 {seen.ToLocalTime():HH:mm:ss}"); }
-            if (row.Status == CeStatus.EndUnobserved) HoverHint("曾看見事件，但中斷或資料缺漏期間未觀測到戰鬥結束，無法建立可信的冷卻起算時間。");
-            ImGui.PopID();
-        }
-        ImGui.EndTable();
-        ImGui.TextColored(Muted, "首次上島不回推未知冷卻；預估到期不代表已刷新。");
+        var rows = snapshot.Entries.Select(e => (!state.Active || !enabled || !snapshot.ScanFresh) &&
+            e.Status is CeStatus.Register or CeStatus.Warmup or CeStatus.Battle or CeStatus.ConfirmingEnd
+            ? e with { Status = CeStatus.EndUnobserved } : e).ToArray();
+        ImGui.Checkbox("只顯示已觀測的 CE", ref ceRecordedOnly);
+        ImGui.SameLine();
+        if (ImGui.SmallButton("全圖")) ceMapReady = false;
+        ImGui.SameLine(); ImGui.TextColored(Muted, "Ctrl＋滾輪縮放 · 右鍵拖曳");
+        DrawCeSelection(state, actions, rows, now);
+        ImGui.TextColored(Muted, "點選 BOSS 查看觸發條件 · 點座標插旗");
+        var shown = rows.Where(e => !ceRecordedOnly || e.LastSeen is not null).ToArray();
+        DrawCeMap(state, actions, shown, now);
+        if (shown.Length == 0) ImGui.TextColored(Muted, "本場尚無已觀測的 CE，可取消篩選查看所有位置。");
+        if (state.Message.StartsWith("CE 旗標：", StringComparison.Ordinal)) ImGui.TextWrapped(state.Message);
     }
-
-    private static int CeOrder(CeStatus status) => status switch
-    { CeStatus.Register or CeStatus.Warmup or CeStatus.Battle => 0, CeStatus.ConfirmingEnd => 1, CeStatus.Cooldown => 2, CeStatus.Eligible => 3, _ => 4 };
-
     internal static string CeLabel(CeCooldownEntry row, DateTimeOffset now) => row.Status switch
     {
         CeStatus.Register => "報名中", CeStatus.Warmup => "準備中", CeStatus.Battle => $"戰鬥中 · {row.Progress}%",
@@ -159,10 +131,10 @@ internal sealed partial class CompassView
     private void DrawExplorationPage(CompassViewState state, CompassActions actions)
     {
         ImGui.TextColored(KindColor(SpotKind.Exploration), "島上探索筆記 · 南部 12 處");
-        ImGui.TextWrapped("只包含島上的探索地點，排除塔內避世書庫。可直接插旗；勾選納入後，可至巡查路線使用地形最短順序規劃。");
+        ImGui.TextWrapped("只包含島上的探索地點，排除塔內避世書庫。可直接插旗；勾選後顯示於地點清單與場景提示，南部 68 點巡查順序不變。");
         var filters = state.Filters;
         var include = filters.Exploration;
-        if (ImGui.Checkbox("納入巡查目標與場景提示", ref include)) filters = filters with { Exploration = include };
+        if (ImGui.Checkbox("顯示於地點清單與場景提示", ref include)) filters = filters with { Exploration = include };
         var only = filters.OnlyUnexplored;
         if (ImGui.Checkbox("只顯示未探索的筆記地點", ref only)) filters = filters with { OnlyUnexplored = only };
         if (filters != state.Filters) actions.SetFilters(filters);

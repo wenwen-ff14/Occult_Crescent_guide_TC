@@ -241,6 +241,7 @@ LootChecks.Run(Check);
 RouteAutomationChecks.Run(Check);
 ExplorationChecks.Run(Check, exploration);
 PlayerVisibilityChecks.Run(Check);
+PlayerFriendChecks.Run(Check);
 PotAutomationChecks.Run(Check);
 PotFateChecks.Run(Check);
 CeCooldownChecks.Run(Check);

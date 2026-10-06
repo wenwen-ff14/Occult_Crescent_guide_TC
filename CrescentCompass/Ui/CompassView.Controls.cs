@@ -10,9 +10,7 @@ internal sealed partial class CompassView
     private void DrawRouteControls(CompassViewState state, CompassActions actions)
     {
         if (state.Controls is not { } control) return;
-        var mode = control.ChartMode ? 0 : 1;
-        ImGui.SetNextItemWidth(U(242));
-        if (ImGui.Combo("路線模式", ref mode, "圖表編號 · 南部 68 點\0地形最短順序 · 依篩選\0")) actions.SetChartMode?.Invoke(mode == 0);
+        ImGui.TextColored(Muted, "南部 68 點 · 依圖表編號巡查");
         if (control.ChartMode)
         {
             var number = control.StartNumber;
@@ -25,7 +23,7 @@ internal sealed partial class CompassView
                 ImGui.EndDisabled();
             }
             ImGui.TextWrapped("依編號遞增，68 → 1 巡查一圈。包含全島 68 個固定候選點，已巡查／略過者除外；箱子是否可開需到場確認。");
-            if (state.Active && !state.Region.Contains("南")) ImGui.TextColored(Carrot, "圖表限南部；北部請切換地形最短順序。");
+            if (state.Active && !state.Region.Contains("南")) ImGui.TextColored(Carrot, "巡查路線僅支援新月島南部。");
         }
         if (control.LastOpen is { } opened)
             ImGui.TextColored(Mint, $"上次開箱 #{opened.Number:00} · {opened.OpenedAt.ToLocalTime():MM/dd HH:mm} · {(opened.Manual ? "手動確認" : "自動判定")}");

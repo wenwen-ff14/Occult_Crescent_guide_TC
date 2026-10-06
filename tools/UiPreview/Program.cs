@@ -51,6 +51,20 @@ unsafe
             textures[job.IconId] = new(width, height, reader.ReadBytes(width * height * 4));
         }
         using var catalogStream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "carrot_locations.json"));
+        var ceTextureDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../artifacts/ce-map-textures"));
+        var ceTextureIds = new Dictionary<string, ulong>();
+        foreach (var (name, gamePath, textureId) in new[] {
+            ("map-967", CeMapCatalog.TexturePath, 9000967UL),
+            ("63909", "ui/icon/063000/063909.tex", 63909UL),
+            ("63911", "ui/icon/063000/063911.tex", 63911UL) })
+        {
+            var file = Path.Combine(ceTextureDirectory, name + ".rgba");
+            if (!File.Exists(file)) continue;
+            using var reader = new BinaryReader(File.OpenRead(file));
+            var width = reader.ReadInt32(); var height = reader.ReadInt32();
+            textures[textureId] = new(width, height, reader.ReadBytes(width * height * 4));
+            ceTextureIds[gamePath] = textureId;
+        }
         var catalog = SpotCatalog.Load(catalogStream);
         var origin = new Vector3(520, 98, -220);
         var route = RoutePlanner.Plan(origin, catalog.Take(12)).Stops;
@@ -110,6 +124,10 @@ unsafe
             GroundLegs = [], TotalStops = 68, CompletedStops = 0, SkippedStops = 0, Controls = chartControls,
             Message = "從圖表 #24 出發，24 → 68 → 1 → 23。此圖為離線介面預覽，未模擬地形路徑。", NavigationDetail = "地形路段待計算", RouteChanged = false };
         var actionCount = 0;
+        var potOverlayOptions = new CompassPotOverlayOptions(false, true);
+        var patrolOverlayOptions = new CompassPatrolOverlayOptions(false, true);
+        List<string> patrolOverlayCalls = [];
+        List<string> potOverlayCalls = [];
         var waymarkCalls = new List<string>();
         string importedWaymarks = "";
         Guid lastPlacedWaymark = Guid.Empty;
@@ -119,9 +137,11 @@ unsafe
         List<byte> phantomSwitchCalls = [];
         List<string> phantomCopies = [];
         var phantomIconRefreshes = 0;
+        List<(ushort Id, bool Trigger)> ceFlags = [];
         void ActionCalled() => actionCount++;
         var actions = new CompassActions(_ => ActionCalled(), _ => ActionCalled(), ActionCalled, _ => ActionCalled(), ActionCalled, ActionCalled,
             SetPotAutoFlag: _ => ActionCalled(), FlagPot: ActionCalled, SetPotFateNotify: _ => ActionCalled(), SetHideOtherPlayers: _ => ActionCalled(),
+            SetPotFateSoonNotify: _ => ActionCalled(),
             ConfirmOpened: ActionCalled, SetCeTracking: _ => ActionCalled(), ClearCeCooldowns: ActionCalled,
             SetFateAutoFlag: _ => ActionCalled(), ReleaseFateNavigation: ActionCalled, FlagGeneralFate: _ => ActionCalled(),
             Waymarks: new(_ => { ActionCalled(); waymarkCalls.Add("save"); }, (json, _) => { ActionCalled(); importedWaymarks = json; waymarkCalls.Add("import"); },
@@ -131,7 +151,14 @@ unsafe
             SetAutoOpenNearbyChests: value => { ActionCalled(); autoChestSetting = value; autoChestCalls.Add(value); },
             SwitchPhantomJob: id => phantomSwitchCalls.Add(id), CopyPhantomMacro: text => phantomCopies.Add(text),
             DrawPhantomJobIcon: (id, size) => { if (!textures.ContainsKey(id)) return false; ImGui.Image(new ImTextureID(id), size); return true; },
-            RefreshPhantomMacroIcons: () => phantomIconRefreshes++, Loot: new((_, _) => ActionCalled(), _ => ActionCalled(), _ => ActionCalled()));
+            RefreshPhantomMacroIcons: () => phantomIconRefreshes++, Loot: new((_, _) => ActionCalled(), _ => ActionCalled(), _ => ActionCalled()),
+            GetGameTexture: path => ceTextureIds.GetValueOrDefault(path), FlagCeLocation: (id, trigger) => ceFlags.Add((id, trigger)),
+            PotOverlay: new(value => { potOverlayOptions = potOverlayOptions with { Enabled = value }; potOverlayCalls.Add("visible-" + value); },
+                value => { potOverlayOptions = potOverlayOptions with { Locked = value }; potOverlayCalls.Add("locked-" + value); },
+                () => potOverlayCalls.Add("reset")),
+            PatrolOverlay: new(value => { patrolOverlayOptions = patrolOverlayOptions with { Enabled = value }; patrolOverlayCalls.Add("visible-" + value); },
+                value => { patrolOverlayOptions = patrolOverlayOptions with { Locked = value }; patrolOverlayCalls.Add("locked-" + value); },
+                () => patrolOverlayCalls.Add("reset")));
         var demoWaymark = new WaymarkPreset(Guid.NewGuid(), "南部 · 戰鬥集合點（示範）", 1252,
             new DateTimeOffset(2026, 10, 3, 18, 25, 0, TimeSpan.FromHours(8)),
             Enumerable.Range(0, 8).Select(i => new SavedWaymark(120 + i * 2, 5, -240 + i * 3, i < 6)).ToArray());
@@ -163,8 +190,17 @@ unsafe
              new(1963, "一般 FATE（示範）", "X 20.0 / Y 15.0", "進度 42% · 剩餘 08:25")]) };
         using var lootStream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "loot_catalog.json"));
         var lootState = state with { Loot = new(LootCleanup.Load(lootStream), new HashSet<uint> { 8143 }, new Dictionary<uint, int> { [8143] = 99 }, LootCleanupMode.Discard, false, "未啟動；先標記垃圾再啟動。", 0) };
+        if (args.Length <= 1 || args[1] == "pot-overlay") PotOverlayPreview.Run(output, textures);
+        if (args.Length <= 1 || args[1] == "patrol-overlay") PatrolOverlayPreview.Run(output, textures);
         foreach (var scenario in new[]
         {
+            (Name: "patrol-overlay-options", Width: 690, Height: 1250, Scale: 1f, State: chartState),
+            (Name: "patrol-overlay-options-off-island", Width: 690, Height: 1000, Scale: 1f, State: chartState with { Active = false }),
+            (Name: "patrol-overlay-options-settings", Width: 690, Height: 1300, Scale: 1f, State: chartState with { PotOverlay = new(true, false) }),
+            (Name: "patrol-overlay-enabled", Width: 690, Height: 1450, Scale: 1f, State: chartState with { PatrolOverlay = new(true, false) }),
+            (Name: "pot-overlay-options", Width: 690, Height: 1200, Scale: 1f, State: state),
+            (Name: "pot-overlay-options-off-island", Width: 690, Height: 1000, Scale: 1f, State: state with { Active = false }),
+            (Name: "pot-overlay-enabled", Width: 690, Height: 1200, Scale: 1f, State: state with { PotOverlay = new(true, false) }),
             (Name: "loot", Width: 940, Height: 980, Scale: 1f, State: lootState),
             (Name: "loot-compact", Width: 690, Height: 980, Scale: 1f, State: lootState),
             (Name: "loot-scaled", Width: 1020, Height: 1250, Scale: 1.5f, State: lootState),
@@ -216,6 +252,11 @@ unsafe
             (Name: "general-fates-scaled", Width: 1020, Height: 1200, Scale: 1.5f, State: generalFates),
             (Name: "general-fates-off-island", Width: 690, Height: 900, Scale: 1f, State: generalFates with { Active = false, GeneralFates = new(true, false, "等待進入新月島。", []) }),
             (Name: "ce-cooldowns", Width: 960, Height: 1080, Scale: 1f, State: ceState),
+            (Name: "ce-actions", Width: 960, Height: 1450, Scale: 1f, State: ceState),
+            (Name: "ce-zoomed", Width: 960, Height: 1080, Scale: 1f, State: ceState),
+            (Name: "ce-zoomed-scaled", Width: 1020, Height: 1380, Scale: 1.5f, State: ceState),
+            (Name: "ce-zoomed-max", Width: 690, Height: 1000, Scale: 1f, State: ceState),
+            (Name: "ce-zoomed-out", Width: 690, Height: 1000, Scale: 1f, State: ceState),
             (Name: "ce-compact", Width: 690, Height: 1000, Scale: 1f, State: ceState),
             (Name: "ce-scaled", Width: 1020, Height: 1380, Scale: 1.5f, State: ceState),
             (Name: "ce-unknown", Width: 690, Height: 1000, Scale: 1f, State: ceState with { Ce = new(true, new CeCooldownTracker().Snapshot(ceNow), ceNow) }),
@@ -229,6 +270,8 @@ unsafe
             (Name: "menu-ce-open", Width: 690, Height: 1000, Scale: 1f, State: ceState),
             (Name: "menu-settings", Width: 690, Height: 740, Scale: 1f, State: state),
             (Name: "chart-route", Width: 960, Height: 1300, Scale: 1f, State: chartState),
+            (Name: "chart-settings", Width: 960, Height: 1600, Scale: 1f, State: chartState),
+            (Name: "chart-settings-scaled", Width: 1400, Height: 2300, Scale: 1.5f, State: chartState),
             (Name: "chart-compact", Width: 690, Height: 1550, Scale: 1f, State: chartState),
             (Name: "chart-scaled", Width: 1400, Height: 2000, Scale: 1.5f, State: chartState),
             (Name: "chart-paused", Width: 690, Height: 1550, Scale: 1f, State: chartState with { Controls = chartControls with { Paused = true }, Planning = true, AutomationDetail = "使用者已暫停，停止換站與自動換旗；魔法罐追蹤另行運作。", NavigationDetail = "路線已暫停；按繼續後接回保留的站點。" }),
@@ -273,11 +316,12 @@ unsafe
             (Name: "island-known", Width: 960, Height: 1140, Scale: 1f, State: state with { Points = demo.Take(4).ToArray(), Route = demo.Take(4).ToArray(), TreasureSurvey = new TreasureSurvey(0, 0, DateTimeOffset.Now), TotalStops = 4, CompletedStops = 0 }),
             (Name: "auto-next", Width: 960, Height: 1320, Scale: 1f, State: state with { Points = checkingRoute, Route = checkingRoute, SkippedStops = 2, TotalStops = live.Length + 6, AutomationDetail = "箱體持續不可選取 · 確認 1.5 / 3.0 秒", Message = "已略過 2 處沒有可用寶箱的地點，下一站旗標已更新。" }),
             (Name: "auto-finished", Width: 690, Height: 1250, Scale: 1f, State: state with { Points = [], Route = [], TotalStops = 3, CompletedStops = 2, SkippedStops = 1, Message = "本輪巡查結束：已巡查 2 站，略過 1 個空點。" }),
-            (Name: "auto-distance", Width: 690, Height: 1540, Scale: 1f, State: state with { Points = distantRoute, Route = distantRoute, TotalStops = 3, CompletedStops = 0, EmptyCheckRadius = 60, AutomationDetail = "距目標 85 m／判定 60 m，高差 0.0 m／上限 8 m。", Message = "保留巡查紀錄；優先續巡上輪 3 個未巡查點，共 3 站。 已更新首站旗標。" }),
+            (Name: "auto-distance", Width: 690, Height: 1540, Scale: 1f, State: state with { Points = distantRoute, Route = distantRoute, TotalStops = 3, CompletedStops = 0, AutomationDetail = "距目標 85 m／判定 60 m，高差 0.0 m／上限 8 m。", Message = "保留巡查紀錄；優先續巡上輪 3 個未巡查點，共 3 站。 已更新首站旗標。" }),
         })
         {
             var view = new CompassView { Page = scenario.Name switch
             {
+                "patrol-overlay-options-settings" => CompassPage.Settings,
                 var name when name.StartsWith("loot") => CompassPage.Loot,
                 var name when name.StartsWith("waymarks") => CompassPage.Waymarks,
                 var name when name.StartsWith("phantom-jobs") => CompassPage.Settings,
@@ -299,7 +343,9 @@ unsafe
             waymarkCalls.Clear();
             ignoreDistanceSetting = null;
             autoChestSetting = null; autoChestCalls.Clear();
-            phantomSwitchCalls.Clear(); phantomCopies.Clear(); phantomIconRefreshes = 0;
+            phantomSwitchCalls.Clear(); phantomCopies.Clear(); phantomIconRefreshes = 0; ceFlags.Clear();
+            potOverlayOptions = scenario.State.PotOverlay ?? new(false, true); potOverlayCalls.Clear();
+            patrolOverlayOptions = scenario.State.PatrolOverlay ?? new(false, true); patrolOverlayCalls.Clear();
             string[] clicks = scenario.Name switch { "waymarks-button-check" => ["save", "place", "delete", "delete-confirm"],
                 "waymarks-off-island" => ["save", "place"], "waymarks-empty" => ["import"], "waymarks-combat" => ["place"], "waymarks-cancel-check" => ["cancel"],
                 "waymarks-import-check" => ["import-header", "json", "import"], _ => [] };
@@ -310,8 +356,14 @@ unsafe
             if (scenario.Name == "phantom-jobs-actions") clicks = ["refresh-icons", "copy-1", "switch-0", "switch-1"];
             if (scenario.Name == "phantom-jobs-off-island") clicks = ["copy-1", "switch-1"];
             if (scenario.Name == "phantom-jobs-last") clicks = ["job-scroll", "copy-12", "switch-12"];
+            if (scenario.Name == "ce-actions") clicks = ["boss-33", "trigger-flag", "boss-37", "trigger-flag", "boss-39", "trigger-flag",
+                "boss-41", "trigger-flag", "boss-42", "trigger-flag", "boss-44", "trigger-flag", "boss-34", "boss-flag"];
+            if (scenario.Name is "ce-off-island" or "ce-north" or "ce-transit") clicks = ["trigger-flag", "boss-flag"];
+            if (scenario.Name.StartsWith("pot-overlay-options")) clicks = ["visible", "locked", "reset", "visible"];
+            if (scenario.Name.StartsWith("patrol-overlay-options")) clicks = ["visible", "locked", "locked", "reset", "visible"];
+            if (scenario.Name.StartsWith("chart-settings")) clicks = ["filters", "status"];
             CompassPage[] navigation = [CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings, CompassPage.Fate, CompassPage.Pot, CompassPage.Waymarks, CompassPage.Patrol];
-            for (var frame = 0; frame < (clicks.Length > 0 ? 3 + clicks.Length * 4 : scenario.Name.StartsWith("cards-navigation") ? 3 + navigation.Length * 4 : scenario.Name == "menu-navigation" ? 3 + navigation.Length * 7 : scenario.Name is "chart-zoomed" or "menu-ce-open" ? 7 : 3); frame++)
+            for (var frame = 0; frame < (clicks.Length > 0 ? 3 + clicks.Length * 4 : scenario.Name.StartsWith("cards-navigation") ? 3 + navigation.Length * 4 : scenario.Name == "menu-navigation" ? 3 + navigation.Length * 7 : scenario.Name == "ce-zoomed" ? 15 : scenario.Name.StartsWith("ce-zoomed") || scenario.Name is "chart-zoomed" or "menu-ce-open" ? 7 : 3); frame++)
             {
                 if (scenario.Name.StartsWith("cards-navigation") && frame >= 3)
                 {
@@ -329,7 +381,7 @@ unsafe
                 if (clicks.Length > 0 && frame >= 3)
                 {
                     var index = (frame - 3) / 4; var step = (frame - 3) % 4;
-                    if (step == 0) { var target = clicks[index] == "auto-chest" ? view.AutoChestToggleTarget : scenario.Name.StartsWith("phantom-jobs") ? view.PhantomTargets[clicks[index] == "job-scroll" ? "copy-1" : clicks[index]] : view.WaymarkTargets[clicks[index]]; io.AddMousePosEvent(target.X, target.Y); }
+                    if (step == 0) { var target = scenario.Name.StartsWith("chart-settings") ? view.PatrolSettingsTargets[clicks[index]] : scenario.Name.StartsWith("patrol-overlay-options") ? view.PatrolOverlayTargets[clicks[index]] : scenario.Name.StartsWith("pot-overlay-options") ? view.PotOverlayTargets[clicks[index]] : scenario.Name.StartsWith("ce-") ? view.CeTargets[clicks[index]] : clicks[index] == "auto-chest" ? view.AutoChestToggleTarget : scenario.Name.StartsWith("phantom-jobs") ? view.PhantomTargets[clicks[index] == "job-scroll" ? "copy-1" : clicks[index]] : view.WaymarkTargets[clicks[index]]; io.AddMousePosEvent(target.X, target.Y); }
                     if (step == 1 && clicks[index] == "job-scroll") io.AddMouseWheelEvent(0, -30);
                     if (step == 1 && clicks[index] != "job-scroll") io.AddMouseButtonEvent(0, true);
                     if (step == 2 && clicks[index] != "job-scroll") io.AddMouseButtonEvent(0, false);
@@ -357,12 +409,22 @@ unsafe
                     if (frame == 4) io.AddMouseButtonEvent(0, true);
                     if (frame == 5) io.AddMouseButtonEvent(0, false);
                 }
-                if (scenario.Name == "chart-zoomed")
+                if (scenario.Name == "chart-zoomed" || scenario.Name.StartsWith("ce-zoomed"))
                 {
-                    if (frame == 3) io.MousePos = view.MapArea.Origin + view.MapArea.Size * new Vector2(0.65f, 0.55f);
-                    if (frame == 4) { io.AddKeyEvent(ImGuiKey.ModCtrl, true); io.AddMouseWheelEvent(0, 3); }
+                    var mapArea = scenario.Name.StartsWith("ce-zoomed") ? view.CeMapArea : view.MapArea;
+                    if (frame == 3) io.MousePos = scenario.Name == "ce-zoomed-max" ? view.CeTargets["boss-33"] : mapArea.Origin + mapArea.Size * new Vector2(0.65f, 0.35f);
+                    if (frame == 4) { io.AddKeyEvent(ImGuiKey.ModCtrl, true); io.AddMouseWheelEvent(0, scenario.Name == "ce-zoomed-max" ? 20 : scenario.Name == "ce-zoomed-out" ? -20 : 3); }
                     if (frame == 5) io.AddKeyEvent(ImGuiKey.ModCtrl, false);
                     if (frame == 6) io.MousePos = new Vector2(-1000);
+                    if (scenario.Name == "ce-zoomed")
+                    {
+                        // Select the enlarged icon outside its original hit radius, then flag that boss.
+                        if (frame == 7) { var target = view.CeTargets["boss-42"] + new Vector2(25, 0); io.AddMousePosEvent(target.X, target.Y); }
+                        if (frame is 8 or 11) io.AddMouseButtonEvent(0, true);
+                        if (frame is 9 or 12) io.AddMouseButtonEvent(0, false);
+                        if (frame == 10) { var target = view.CeTargets["boss-flag"]; io.AddMousePosEvent(target.X, target.Y); }
+                        if (frame == 14) io.AddMousePosEvent(-1000, -1000);
+                    }
                 }
                 ImGui.NewFrame();
                 using (new CompassTheme())
@@ -371,7 +433,7 @@ unsafe
                     ImGui.SetNextWindowSize(new Vector2(scenario.Width - 40, scenario.Height - 40));
                     if (ImGui.Begin($"新月島尋寶羅盤 · 示範資料##{scenario.Name}", ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse))
                     {
-                        var frameState = scenario.State;
+                        var frameState = scenario.State with { PotOverlay = potOverlayOptions, PatrolOverlay = patrolOverlayOptions };
                         if (autoChestSetting is { } autoSetting) frameState = frameState with { AutoOpenNearbyChests = autoSetting };
                         if (ignoreDistanceSetting is { } setting && frameState.Waymarks is { } markState)
                             frameState = frameState with { Waymarks = markState with { IgnoreDistance = setting } };
@@ -421,6 +483,18 @@ unsafe
                 throw new InvalidOperationException("CE dropdown must be visible in the reference preview.");
             if (scenario.Name == "chart-zoomed" && (view.MapZoom < 1.5f || MathF.Abs(scrollAfter - scrollBefore) > 0.1f))
                 throw new InvalidOperationException($"Ctrl-wheel must zoom map without scrolling parent: zoom={view.MapZoom}, scroll={scrollBefore}->{scrollAfter}");
+            if (scenario.Name == "ce-zoomed" && (view.CeMapZoom < 1.5f || MathF.Abs(scrollAfter - scrollBefore) > 0.1f))
+                throw new InvalidOperationException("CE Ctrl-wheel must zoom the map without scrolling its parent.");
+            if (scenario.Name == "ce-zoomed" && !ceFlags.SequenceEqual(new (ushort, bool)[] { (42, false) }))
+                throw new InvalidOperationException("Clicking the enlarged icon must select and flag its boss: " + string.Join(",", ceFlags));
+            if (scenario.Name == "ce-actions" && !ceFlags.SequenceEqual(new (ushort, bool)[] { (33, true), (37, true), (39, true), (41, true), (42, true), (44, true), (34, false) }))
+                throw new InvalidOperationException("CE selection/coordinate clicks must flag each selected trigger or boss exactly once: " + string.Join(",", ceFlags));
+            if (scenario.Name is "ce-off-island" or "ce-north" or "ce-transit" && ceFlags.Count != 0)
+                throw new InvalidOperationException("CE flag actions must be disabled outside South Horn or during loading.");
+            if (scenario.Name.StartsWith("pot-overlay-options") && !potOverlayCalls.SequenceEqual(new[] { "visible-True", "locked-False", "reset", "visible-False" }))
+                throw new InvalidOperationException("Pot overlay options must remain usable on and off the island: " + string.Join(",", potOverlayCalls));
+            if (scenario.Name.StartsWith("patrol-overlay-options") && (!patrolOverlayCalls.SequenceEqual(new[] { "visible-True", "locked-False", "locked-True", "reset", "visible-False" }) || potOverlayCalls.Count != 0))
+                throw new InvalidOperationException("Patrol overlay options must work independently of the pot overlay: " + string.Join(",", patrolOverlayCalls));
             var path = Path.Combine(output, $"{scenario.Name}.png");
             SoftwareRenderer.Render(ImGui.GetDrawData(), textures, scenario.Width, scenario.Height, path);
             Console.WriteLine($"Rendered {scenario.Name}: {scenario.Width}x{scenario.Height}, {ImGui.GetDrawData().TotalVtxCount} vertices -> {path}");

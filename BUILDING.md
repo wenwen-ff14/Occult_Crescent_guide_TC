@@ -12,6 +12,10 @@ dotnet run --project tests/CrescentCompass.Validation/CrescentCompass.Validation
 ./scripts/Package.ps1
 ```
 
+安裝包固定只保留兩個插件 DLL、deps／manifest JSON、icon、授權與第三方聲明，以及附線上連結的簡短 README。完整文件、查核資料與示範截圖仍包含於 `-source.zip`，不再放進 `-api13.zip`，以降低下載逾時風險；不影響內嵌遊戲資料或玩家設定。
+
+打包後自動執行 `scripts/Verify-Package.ps1`，檢查十個安裝檔案的精確清單、版本及 SHA256，並核對原始碼包保留全部文件及截圖。也可單獨執行該腳本。此變更不覆寫已發布的舊版本包；套件庫仍需另行準備並發布新版本才會生效。
+
 ### 維護自訂套件庫
 
 修改專案版本後，執行下列命令。腳本使用獨立輸出資料夾編譯，產生版本固定的 `packages/CrescentCompass/<組件版本>.zip` 與根目錄 `pluginmaster.json`；會核對 DLL、包內 manifest、API 13 與安裝／更新網址。已存在的版本包不覆寫，後續更新需提高專案版本。

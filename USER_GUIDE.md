@@ -4,7 +4,7 @@
 
 ## 寶箱資料與候選巡查
 
-### 蘿蔔巡航與權重（本機 0.10.21）
+### 蘿蔔巡航與權重（0.10.21）
 
 巡查頁「路線」選「蘿蔔路線 1～25」，備妥幸運胡蘿蔔並下坐騎，再啟動自動巡查。依提供的編號圖走一圈，使用道具後等待兔子箱並嘗試開啟；缺少道具、異常或逾時停止。`/crescent route carrot` 只選擇並規劃，`/crescent autopatrol` 才移動。
 
@@ -60,7 +60,9 @@
 
 ## 安裝本機版本
 
-1. 將本機 `dist/CrescentCompass-0.10.21-api13.zip` 解壓縮到固定資料夾；保留 DLL、JSON 與相依 DLL 在一起。重載插件後確認版本為 **0.10.21**。本機修改尚未發布至自訂套件庫，既有發行版安裝方式見 [README](README.md)。
+一般使用者可直接從自訂套件庫更新至 **0.10.21**，見 [README](README.md)。以下為手動開發版安裝，與套件庫版擇一啟用，不要同時載入兩份。
+
+1. 將 `dist/CrescentCompass-0.10.21-api13.zip` 或 GitHub 的 0.10.21 精簡安裝包解壓縮到固定資料夾；保留 DLL、JSON 與 images 資料夾在一起。重載插件後確認版本為 **0.10.21**。完整文件及示範截圖改放 GitHub 與原始碼包，不影響功能或玩家設定。
 2. 遊戲中使用 `/xlsettings`，到實驗性設定的 **Dev Plugin Locations** 加入解壓後 `CrescentCompass.dll` 的完整路徑。
 3. 使用 `/xlplugins`，到 **Dev Tools / Installed Dev Plugins** 啟用「新月島尋寶羅盤」。
 4. 啟用相容 API 13 的 vnavmesh，進入新月島南部，輸入 `/crescent`，設定起點編號並按「從 #編號 開始」。導航就緒後計算地面路段；其他偵測與手動旗標功能可獨立使用。

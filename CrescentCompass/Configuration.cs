@@ -34,6 +34,9 @@ public sealed class Configuration : IPluginConfiguration
     public bool ShowPhantomJobOverlay { get; set; } = false;
     public float PhantomJobOverlayX { get; set; } = 24;
     public float PhantomJobOverlayY { get; set; } = 540;
+    public bool ShowCarrotOverlay { get; set; } = false;
+    public float CarrotOverlayX { get; set; } = 440;
+    public float CarrotOverlayY { get; set; } = 160;
     public bool TrackCeCooldowns { get; set; } = true;
     public bool AutoFlagFates { get; set; } = false;
     public bool IgnoreWaymarkDistance { get; set; } = false;

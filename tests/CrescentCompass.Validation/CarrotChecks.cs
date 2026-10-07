@@ -8,8 +8,9 @@ internal static class CarrotChecks
         using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "Data/SouthHorn/carrot_locations.json"));
         var catalog = SpotCatalog.Load(stream);
         var route = CarrotRoute.Order(catalog);
-        int[] mapping = [22, 11, 1, 10, 21, 8, 9, 3, 4, 7, 12, 5, 24, 6, 13, 20, 17, 2, 14, 19, 18, 15, 23, 25, 16];
+        int[] mapping = [22, 11, 1, 10, 21, 9, 8, 3, 4, 7, 12, 5, 24, 6, 13, 20, 17, 2, 14, 19, 18, 15, 23, 25, 16];
         check(route.Select(s => s.Id).SequenceEqual(mapping.Select(i => $"1252:Carrot:{i}")), "All 25 user-image labels map to unchanged catalog coordinates");
+        check(route[5].Id == "1252:Carrot:9" && route[6].Id == "1252:Carrot:8", "Corrected #6 and #7 exchange numbers without changing catalog coordinates");
         for (var n = 1; n <= 25; n++)
         {
             var rotated = CarrotRoute.Order(catalog.Reverse(), n);
@@ -50,7 +51,104 @@ internal static class CarrotChecks
         weights.Reset(route);
         check(weights.Pickups == 0 && route.All(p => weights.Weight(p.Id) == 2) && weights.ConfirmPickup(route[4].Id, 50), "New session clears weights and pickup deduplication");
         CheckGathering(check, route);
+        CheckReports(check, route);
+        CheckPickupTracking(check, route);
         CheckEmpty(check, route[0]);
+    }
+
+    private static void CheckReports(Action<bool, string> check, IReadOnlyList<Spot> route)
+    {
+        var weights = new CarrotSearchWeights(); weights.Reset(route);
+        var remaining = route.Skip(10).ToArray(); var original = remaining.ToArray();
+        foreach (var pad in route.Take(10)) weights.CheckEmpty(pad.Id);
+        var revision = weights.Revision;
+        check(weights.ConfirmReportedPickup(route[14].Id, revision), "A reported #15 pickup does not require proximity or current route head");
+        check(route.Take(10).All(p => weights.Weight(p.Id) == 1) && weights.Weight(route[14].Id) == 1 &&
+            route.Skip(10).Where(p => p != route[14]).All(p => weights.Weight(p.Id) == 2), "Remote pickup increments searched pads and caps unknown pads at +2");
+        check(remaining.SequenceEqual(original) && weights.Pickups == 1, "Recording another player's pickup preserves original patrol order and head");
+        check(!weights.ConfirmReportedPickup(route[14].Id, revision) && weights.Pickups == 1, "Repeated confirmation of the same popup cannot count twice");
+        weights.CheckEmpty(route[0].Id);
+        check(weights.Weight(route[0].Id) == 0 && weights.Pickups == 1, "Manual inspected point clears prior +1 without recording a pickup");
+        weights.CheckEmpty(route[24].Id);
+        check(weights.Weight(route[24].Id) == 0, "Manual inspected point also clears +2");
+        revision = weights.Revision;
+        weights.ConfirmPickup(route[13].Id, 123);
+        check(!weights.ConfirmReportedPickup(route[14].Id, revision), "A local automatic pickup invalidates older manual confirmation snapshots");
+        revision = weights.Revision;
+        weights.Reset(route);
+        check(!weights.ConfirmReportedPickup(route[14].Id, revision) && weights.Pickups == 0, "Changing session invalidates an old manual popup");
+        check(!weights.ConfirmReportedPickup("wrong", weights.Revision) && weights.Pickups == 0, "Unknown reported point cannot alter weights");
+    }
+
+    private static void CheckPickupTracking(Action<bool, string> check, IReadOnlyList<Spot> route)
+    {
+        var pad = route[14]; var player = pad.Position;
+        var carrot = new Observation(100, 2010139, SpotKind.Carrot, player, Targetable: false);
+        var bunny = new Observation(200, 2012936, SpotKind.RabbitGold, player);
+        var tracker = new CarrotPickupTracker();
+        CarrotPickup? Tick(long now, int? count = 5, bool casting = false, Observation[]? objects = null, Vector3? position = null) =>
+            tracker.Update(route, objects ?? [carrot], position ?? player, count, casting, now);
+        check(Tick(0) is null && Tick(500, casting: true) is null, "Manual cast is observed without an automatic route but never counts by itself");
+        var first = Tick(1000, 4, objects: []);
+        check(first?.PadId == pad.Id && first.Sequence > 0, "Manual item use at off-route #15 records one pickup after consumption");
+        check(Tick(1500, 4) is null && Tick(2000, 4) is null, "Repeated scans after manual pickup do not increment again");
+        Tick(2500, 4, true); var second = Tick(3000, 3);
+        check(second?.PadId == pad.Id && second.Sequence > first!.Sequence, "A second carrot at the same pad gets a distinct event even with reused object ID");
+        var weights = new CarrotSearchWeights(); weights.Reset(route);
+        foreach (var p in route.Take(10)) weights.CheckEmpty(p.Id);
+        weights.ConfirmPickup(first!.PadId, first.Sequence); weights.ConfirmPickup(first.PadId, first.Sequence);
+        check(weights.Pickups == 1 && route.Take(10).All(p => weights.Weight(p.Id) == 1), "A passive observation feeds global weights exactly once");
+
+        tracker.Reset(); Tick(0); Tick(500, 4, objects: []);
+        check(Tick(1000, 4, objects: [bunny])?.PadId == pad.Id, "A missed cast can be confirmed by single consumption followed by a new nearby bunny");
+        tracker.Reset(); Tick(0, objects: [carrot, bunny]); Tick(500, 4, objects: [bunny]);
+        check(Tick(1000, 4, objects: [bunny]) is null, "Pre-existing bunny does not prove a manual inventory decrement");
+        tracker.Reset(); Tick(0);
+        for (var now = 500; now <= 5000; now += 500)
+            check(Tick(now, 4, objects: []) is null, "Discard or inventory movement without use evidence never increments weights");
+        tracker.Reset(); Tick(0, casting: true);
+        check(Tick(500, objects: [bunny]) is null, "New bunny without local item consumption is not inferred as this player's pickup");
+        tracker.Reset(); Tick(0, casting: true);
+        check(Tick(500, 3, objects: [bunny]) is null, "Multiple-item loss is not a single pickup");
+        tracker.Reset(); Tick(0, casting: true);
+        check(Tick(500, 6, objects: [bunny]) is null, "Inventory gains are never pickup evidence");
+        tracker.Reset(); Tick(0, casting: true);
+        for (var now = 500; now <= 6000; now += 500) check(Tick(now, null) is null, "Missing inventory retains evidence without confirming it");
+        check(Tick(6500, 4)?.PadId == pad.Id, "Restored inventory confirms a pending manual cast once");
+        tracker.Reset(); Tick(0, casting: true);
+        for (var now = 500; now <= 31000; now += 500) Tick(now, null);
+        check(Tick(31500, 4, objects: [bunny]) is null, "Manual consumption after evidence timeout is not guessed");
+        tracker.Reset(); Tick(0, casting: true);
+        check(Tick(3000, 4, objects: [bunny]) is null, "Scan gap invalidates manual pickup evidence");
+        tracker.Reset(); Tick(500, casting: true);
+        check(Tick(0, 4, objects: [bunny]) is null, "Clock rollback invalidates manual pickup evidence");
+        tracker.Reset(); Tick(0, casting: true);
+        check(Tick(500, 4, objects: [bunny], position: player + new Vector3(0, 8, 0)) is null, "Another floor cannot confirm the pending pickup");
+        tracker.Reset(); Tick(0, casting: true); tracker.Reset();
+        check(Tick(500, 4, objects: [bunny]) is null, "Loading or session reset does not carry consumption evidence forward");
+        tracker.Reset(); Tick(0, casting: true); tracker.RecordManual(pad.Id); Tick(500, casting: true);
+        check(Tick(1000, 4) is null, "Reporting a pending local pickup prevents its later automatic observation from counting twice");
+        tracker.Reset(); Tick(0); tracker.RecordManual(pad.Id); Tick(500, casting: true);
+        check(Tick(1000, 4)?.PadId == pad.Id, "Reporting another player's pickup does not suppress a subsequent local use at the same pad");
+        tracker.Reset(); Tick(0); tracker.RecordManual(route[0].Id); Tick(500, casting: true);
+        check(Tick(1000, 4)?.PadId == pad.Id, "A remote report does not suppress local use at a different pad");
+        tracker.Reset();
+        for (var now = 0; now <= 35000; now += 500) Tick(now);
+        Tick(35500, casting: true);
+        check(Tick(36000, 4)?.PadId == pad.Id, "Waiting at a pad more than thirty seconds does not invalidate a later manual cast");
+
+        tracker.Reset();
+        var gather = new CarrotGathering(); var automaticWeights = new CarrotSearchWeights(); automaticWeights.Reset(route);
+        var uses = 0;
+        for (var now = 0; now <= 1500; now += 500)
+        {
+            var count = now < 500 ? 5 : 4;
+            if (Tick(now, count) is { } pickup) automaticWeights.ConfirmPickup(pickup.PadId, pickup.Sequence);
+            gather.Update(pad, [carrot], player, count, true, false, now, target =>
+            { uses++; tracker.RecordUse(pad, target, count, now, [carrot]); return true; });
+        }
+        check(uses == 1 && gather.PickupConfirmed && automaticWeights.Pickups == 1,
+            "Automatic gathering and passive observation share one weight event even when the cast is missed");
     }
 
     private static void CheckGathering(Action<bool, string> check, IReadOnlyList<Spot> route)

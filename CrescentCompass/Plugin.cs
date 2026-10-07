@@ -183,6 +183,7 @@ public sealed partial class Plugin : IDalamudPlugin
         StopPlanning(); StopGroundInspection(); routeAutomation.Reset();
         chestOpenTracker.Reset();
         // Visibility and queued observations are transient; survey history and the selected stops are not.
+        carrotPickupTracker.Reset();
         Session.Observe([], DateTimeOffset.UtcNow);
         potHints.Clear(); treasureSurveys.Clear(); lastObservations = [];
         WalkingRoute = null;
@@ -255,6 +256,7 @@ public sealed partial class Plugin : IDalamudPlugin
                     TreasureSurvey = survey.Survey;
             lastObservations = observations;
             Session.Observe(observations, time);
+            var carrotCount = UpdateCarrotPickups(observations, now);
             if (chestOpenTracker.Update(catalog, observations, Position, player.IsCasting ? player.CastTargetObjectId : 0, now, time) is { } opened)
                 SaveChestProgress(opened);
             potAutomation.Update(Pot, Config.AutoFlagPot, !IsOccupied, now, FlagPot);
@@ -264,7 +266,7 @@ public sealed partial class Plugin : IDalamudPlugin
             if (!IsPaused && !IsPlanning) UpdateRoute(observations, now);
             UpdateAutoPatrol(now);
             UpdateAutoChests(observations, now);
-            UpdateCarrotGathering(observations, now);
+            UpdateCarrotGathering(observations, carrotCount, now);
             // Keep pot navigation in charge for the whole search, including waits for a reveal or new hint.
             if (!IsPaused && !IsPlanning && !EventNavigationActive && (Config.AutoAdvanceChests || autoPatrol.Enabled) && !IsOccupied && routeAutomation.CanAttemptFlag(Remaining.FirstOrDefault()?.Id, now))
             {
@@ -278,6 +280,7 @@ public sealed partial class Plugin : IDalamudPlugin
             if (autoPatrol.Enabled) { autoPatrol.Fail("寶箱偵測失敗，已停止自動巡查。"); PauseRoute(); }
             routeAutomation.ResetInspection();
             chestOpenTracker.Reset();
+            carrotPickupTracker.Reset();
             Message = "偵測失敗；請查看 Dalamud 記錄。";
             if (now - lastError > 10_000) { lastError = now; Log.Error(error, "CrescentCompass object scan failed"); }
         }
@@ -716,7 +719,7 @@ public sealed partial class Plugin : IDalamudPlugin
         if (!Active || spot is null || spot.Territory != Client.TerritoryType || Client.MapId == 0)
         { Message = "目前沒有可插旗的目標，或不在相同區域。"; return false; }
         if (!Session.CanDisplay(spot.Id, Config.DisplayMode) &&
-            !(CarrotMode && CarrotRoute.Number(spot) is not null) &&
+            !(CarrotRoute.Number(spot) is not null && Session.Get(spot.Id) is not null) &&
             !((Remaining.Any(s => s.Id == spot.Id) || Config.UseChartRoute && ChestChart.Number(spot) is not null) && Session.CanPatrol(spot.Id)))
         { Message = "目標已不符合目前顯示條件，未更新旗標。"; return false; }
         spot = Session.Get(spot.Id)!.Spot;
@@ -770,7 +773,7 @@ public sealed partial class Plugin : IDalamudPlugin
         pendingResume = null;
         StopPlanning();
         if (!Active || Remaining.Count == 0) return;
-        if (CarrotMode) { FinishCarrotPad(Remaining[0], empty: false); carrotGathering.Reset(); return; }
+        if (CarrotMode) { FinishCarrotPad(Remaining[0], empty: false, inspected: true); carrotGathering.Reset(); return; }
         routeAutomation.Reset();
         Session.Visit(Remaining[0].Id);
         Remaining.RemoveAt(0);
@@ -857,6 +860,7 @@ public sealed partial class Plugin : IDalamudPlugin
         DrawPotCountdownOverlay();
         DrawPatrolOverlay();
         DrawPhantomJobOverlay();
+        DrawCarrotOverlay();
     }
 
     public void Dispose()

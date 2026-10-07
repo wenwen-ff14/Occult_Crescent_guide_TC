@@ -3,7 +3,7 @@
     "Author": "CrescentCompass contributors",
     "Name": "CrescentCompass｜新月島尋寶羅盤",
     "InternalName": "CrescentCompass",
-    "AssemblyVersion": "0.10.21.0",
+    "AssemblyVersion": "0.10.24.0",
     "Description": "新月島尋寶與活動追蹤工具，支援繁中 Dalamud API 13。\n\n【寶箱巡查】南部 68 點路線、進度浮窗、自動巡查與開箱；固定路段快取，卡住時嘗試替代地面路徑。\n【魔法罐／事件】南北罐倒數與 5 分鐘提醒、FATE 插旗、CE 地圖與觸發怪位置。\n【探索／職業】探索筆記篩選、幻影職業切換與巨集圖示。\n【標點／背包】標點預設與俯視預覽；寵物、樂譜等物品分類，預設全部保留。\n\n輸入 /crescent 開啟。自動巡查需相容的 vnavmesh；自動丟棄／售出只處理手動標記的垃圾。\n倒數為預估；巡查不偵測或避讓怪物。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/wenwen-ff14/Occult_Crescent_guide_TC",
@@ -22,17 +22,17 @@
     "IconUrl": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/CrescentCompass/images/icon.png",
     "Punchline": "寶箱巡查、魔法罐提醒、CE 地圖與背包整理，一個羅盤搞定。",
     "AcceptsFeedback": true,
-    "DownloadLinkInstall": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.10.21.0.zip",
-    "DownloadLinkUpdate": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.10.21.0.zip",
-    "DownloadLinkTesting": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.10.21.0.zip",
+    "DownloadLinkInstall": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.10.24.0.zip",
+    "DownloadLinkUpdate": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.10.24.0.zip",
+    "DownloadLinkTesting": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.10.24.0.zip",
     "IsHide": false,
     "IsTestingExclusive": false,
-    "LastUpdate": 1791368747,
+    "LastUpdate": 1791379428,
     "ImageUrls": [
       "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/docs/previews/ce-cooldowns.png",
       "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/docs/previews/general-fates.png",
       "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/docs/previews/chart-route.png"
     ],
-    "Changelog": "精簡安裝包約 0.68 MB，移除文件截圖以降低下載逾時風險，功能與設定不變。新增南部蘿蔔 1～25 巡航、0／+1／+2 搜尋權重、幸運胡蘿蔔與兔子箱處理；整合 BOCCHI 寶箱分區順序、路段快取與卡住恢復，戰鬥中繼續巡查。魔法罐進島一次性唯讀共享時間與手動重試診斷、幻影職業浮窗、背包分類及介面優化。2,232 項核心檢查通過，實際遊戲地形與互動仍待驗收。套件庫版與開發版請擇一啟用。"
+    "Changelog": "取消遊戲小地圖蘿蔔位置與權重顯示；保留優化表格與可拖曳浮窗。修正已巡查與手動採集權重，新增任意點拾取標記，交換蘿蔔 #6／#7。"
   }
 ]

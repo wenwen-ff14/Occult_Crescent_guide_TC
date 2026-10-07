@@ -25,6 +25,7 @@ internal sealed partial class CompassView
         DrawPotOverlayControls(state, actions);
         DrawPatrolOverlayControls(state, actions);
         DrawPhantomOverlayControl(state, actions);
+        DrawCarrotDisplayControls(state, actions);
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         ImGui.TextColored(Mint, "巡查紀錄");
         ImGui.BeginDisabled(!state.Active);

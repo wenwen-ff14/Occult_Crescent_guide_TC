@@ -5,7 +5,7 @@ public static class CarrotRoute
     public const ushort Territory = 1252;
     public const int Count = 25;
     // User's 1-25 chart -> existing catalog IDs. Catalog identity and coordinates stay unchanged.
-    private static readonly int[] CatalogIds = [22, 11, 1, 10, 21, 8, 9, 3, 4, 7, 12, 5, 24, 6, 13, 20, 17, 2, 14, 19, 18, 15, 23, 25, 16];
+    private static readonly int[] CatalogIds = [22, 11, 1, 10, 21, 9, 8, 3, 4, 7, 12, 5, 24, 6, 13, 20, 17, 2, 14, 19, 18, 15, 23, 25, 16];
     public static int? Number(Spot? spot)
     {
         if (spot is not { Territory: Territory, Kind: SpotKind.Carrot }) return null;
@@ -41,6 +41,7 @@ public sealed class CarrotSearchWeights
     {
         if (weights.TryGetValue(id, out var weight) && weight != 0) { weights[id] = 0; Revision++; }
     }
+    public bool ConfirmReportedPickup(string id, int expectedRevision) => expectedRevision == Revision && ConfirmPickup(id);
     public bool ConfirmPickup(string id, ulong eventToken = 0)
     {
         if (!weights.ContainsKey(id) || eventToken != 0 && !confirmedEvents.Add(eventToken)) return false;

@@ -25,6 +25,9 @@ unsafe
         fixed (ushort* glyphs = ranges)
         {
             io.Fonts.AddFontFromFileTTF("C:/Windows/Fonts/msjh.ttc", 17, config, glyphs);
+            config.MergeMode = true;
+            ushort[] symbols = [0x21BB, 0x21BB, 0];
+            fixed (ushort* symbolGlyphs = symbols) io.Fonts.AddFontFromFileTTF("C:/Windows/Fonts/seguisym.ttf", 17, config, symbolGlyphs);
             if (!io.Fonts.Build()) throw new InvalidOperationException("Unable to build preview font atlas.");
         }
         ImGui.Destroy(config);
@@ -147,11 +150,14 @@ unsafe
             Controls = new(true, 1, false, null, carrotPoints, RouteKind: PatrolRouteKind.Carrot, RouteDetail: "蘿蔔圖表 1～25 · 固定巡航 · 權重 0 / +1 / +2"),
             Carrots = new(1, "已確認使用蘿蔔。", true), AutoPatrol = new(false, true, "未啟動"),
             Message = "蘿蔔 #5 已拾取，先前空點 +1；尚未探過的點 +2。" };
-        List<string> carrotConfirmations = [];
+        if (args.Length <= 1 || args[1] is "carrot" or "carrot-overlay") CarrotOverlayPreview.Run(output, textures, carrotPoints);
+        List<(string Id, int Revision)> carrotConfirmations = [];
         var carrotResets = 0;
         var potOverlayOptions = new CompassPotOverlayOptions(false);
         var patrolOverlayOptions = new CompassPatrolOverlayOptions(false);
         var phantomOverlayOptions = new CompassPhantomOverlayOptions(false);
+        var carrotDisplayOptions = new CompassCarrotDisplayOptions(false);
+        List<string> carrotDisplayCalls = [];
         List<bool> phantomOverlayCalls = [];
         var fetchPotTime = true;
         List<bool> fetchPotTimeCalls = [];
@@ -192,7 +198,8 @@ unsafe
             PhantomOverlay: new(value => { phantomOverlayOptions = phantomOverlayOptions with { Enabled = value }; phantomOverlayCalls.Add(value); }),
             SetFetchPotTimeOnEntry: value => { fetchPotTime = value; fetchPotTimeCalls.Add(value); }, CopyPotTimeDebug: potDebugCopies.Add,
             SetPatrolRoute: value => { ActionCalled(); selectedPatrolRoute = value; patrolRouteCalls.Add(value); },
-            RetryPotTime: () => potDebugRetries++, ConfirmCarrotPickup: carrotConfirmations.Add, ResetCarrotWeights: () => carrotResets++);
+            RetryPotTime: () => potDebugRetries++, ConfirmCarrotPickup: (id, revision) => carrotConfirmations.Add((id, revision)), ResetCarrotWeights: () => carrotResets++,
+            CarrotDisplay: new(value => { carrotDisplayOptions = carrotDisplayOptions with { Overlay = value }; carrotDisplayCalls.Add("overlay-" + value); }));
         var demoWaymark = new WaymarkPreset(Guid.NewGuid(), "南部 · 戰鬥集合點（示範）", 1252,
             new DateTimeOffset(2026, 10, 3, 18, 25, 0, TimeSpan.FromHours(8)),
             Enumerable.Range(0, 8).Select(i => new SavedWaymark(120 + i * 2, 5, -240 + i * 3, i < 6)).ToArray());
@@ -251,12 +258,20 @@ unsafe
         foreach (var scenario in new[]
         {
             (Name: "carrot-route", Width: 960, Height: 1700, Scale: 1f, State: carrotState),
+            (Name: "carrot-display-toggle", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
+            (Name: "carrot-display-settings", Width: 690, Height: 1200, Scale: 1f, State: state),
+            (Name: "carrot-display-off-island", Width: 690, Height: 1200, Scale: 1f, State: state with { Active = false }),
             (Name: "carrot-route-compact", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
             (Name: "carrot-route-short", Width: 690, Height: 900, Scale: 1f, State: carrotState),
             (Name: "carrot-route-scaled", Width: 1020, Height: 2200, Scale: 1.5f, State: carrotState),
             (Name: "carrot-route-switch", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
             (Name: "carrot-actions", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
             (Name: "carrot-stale-confirm", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
+            (Name: "carrot-report-paused", Width: 690, Height: 1400, Scale: 1f, State: carrotState with { Controls = carrotState.Controls! with { Paused = true } }),
+            (Name: "carrot-report-no-route", Width: 690, Height: 1400, Scale: 1f, State: carrotState with { Route = [] }),
+            (Name: "carrot-report-route-advanced", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
+            (Name: "carrot-report-row", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
+            (Name: "carrot-report-cancel", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
             (Name: "carrot-off-island", Width: 690, Height: 1400, Scale: 1f, State: carrotState with { Active = false,
                 Carrots = carrotState.Carrots! with { CanConfirm = false }, AutoPatrol = new(false, false, "請先進島。") }),
             (Name: "bocchi-route", Width: 960, Height: 1500, Scale: 1f, State: bocchiState),
@@ -438,6 +453,7 @@ unsafe
             var view = new CompassView { Page = scenario.Name switch
             {
                 "patrol-overlay-options-settings" => CompassPage.Settings,
+                "carrot-display-settings" or "carrot-display-off-island" => CompassPage.Settings,
                 var name when name.StartsWith("phantom-overlay-options") => CompassPage.Settings,
                 var name when name.StartsWith("loot") => CompassPage.Loot,
                 var name when name.StartsWith("waymarks") => CompassPage.Waymarks,
@@ -463,6 +479,7 @@ unsafe
             autoPatrolSetting = null; autoPatrolCalls.Clear();
             selectedPatrolRoute = null; patrolRouteCalls.Clear();
             carrotConfirmations.Clear(); carrotResets = 0;
+            carrotDisplayOptions = scenario.State.CarrotDisplay ?? new(false); carrotDisplayCalls.Clear();
             phantomSwitchCalls.Clear(); phantomCopies.Clear(); phantomIconRefreshes = 0; ceFlags.Clear();
             potOverlayOptions = scenario.State.PotOverlay ?? new(false); potOverlayCalls.Clear();
             patrolOverlayOptions = scenario.State.PatrolOverlay ?? new(false); patrolOverlayCalls.Clear();
@@ -480,8 +497,13 @@ unsafe
             if (scenario.Name == "bocchi-route-switch") clicks = ["route", "Chart", "route", "Bocchi"];
             if (scenario.Name == "bocchi-route-invalid") clicks = ["route", "Bocchi"];
             if (scenario.Name == "carrot-route-switch") clicks = ["route", "Bocchi", "route", "Carrot"];
+            if (scenario.Name.StartsWith("carrot-display")) clicks = ["overlay", "overlay"];
             if (scenario.Name == "carrot-actions") clicks = ["sort", "flag-1", "reset", "confirm", "confirm-yes"];
             if (scenario.Name == "carrot-stale-confirm") clicks = ["confirm", "confirm-yes"];
+            if (scenario.Name == "carrot-report-paused") clicks = ["number", "confirm", "confirm-yes"];
+            if (scenario.Name is "carrot-report-no-route" or "carrot-report-route-advanced") clicks = ["confirm", "confirm-yes"];
+            if (scenario.Name == "carrot-report-row") clicks = ["report-6", "confirm-yes"];
+            if (scenario.Name == "carrot-report-cancel") clicks = ["confirm", "cancel"];
             if (scenario.Name == "carrot-off-island") clicks = ["sort", "flag-1", "reset", "confirm"];
             if (scenario.Name is "auto-patrol-off-island" or "auto-patrol-paused") clicks = ["auto-patrol"];
             if (scenario.Name == "phantom-jobs-actions") clicks = ["refresh-icons", "copy-1", "switch-0", "switch-1"];
@@ -524,9 +546,18 @@ unsafe
                     if (step == 1 && clicks[index] == "job-scroll") io.AddMouseWheelEvent(0, -30);
                     if (step == 1 && clicks[index] != "job-scroll") io.AddMouseButtonEvent(0, true);
                     if (step == 2 && clicks[index] != "job-scroll") io.AddMouseButtonEvent(0, false);
-                    if (step == 3 && scenario.Name.StartsWith("pot-debug") && index == clicks.Length - 1) io.AddMousePosEvent(-1000, -1000);
+                    if (step == 3 && (scenario.Name.StartsWith("pot-debug") || scenario.Name.StartsWith("carrot-display")) && index == clicks.Length - 1) io.AddMousePosEvent(-1000, -1000);
                     if (step == 3 && clicks[index] == "json") foreach (char ch in demoWaymark.Export()) io.AddInputCharacter(ch);
                     if (step == 3 && clicks[index] == "search") foreach (char ch in scenario.Name == "loot-filter-empty" ? "48204" : "21057") io.AddInputCharacter(ch);
+                    if (scenario.Name == "carrot-report-paused")
+                    {
+                        if (index == 0 && step == 3) { io.AddKeyEvent(ImGuiKey.ModCtrl, true); io.AddKeyEvent(ImGuiKey.A, true); }
+                        if (index == 1 && step == 0)
+                        {
+                            io.AddKeyEvent(ImGuiKey.A, false); io.AddKeyEvent(ImGuiKey.ModCtrl, false);
+                            foreach (var ch in "15") io.AddInputCharacter(ch);
+                        }
+                    }
                 }
                 if (scenario.Name == "menu-navigation" && frame >= 3)
                 {
@@ -574,8 +605,9 @@ unsafe
                     ImGui.SetNextWindowSize(new Vector2(scenario.Width - 40, scenario.Height - 40));
                     if (ImGui.Begin($"新月島尋寶羅盤 · 示範資料##{scenario.Name}", ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse))
                     {
-                        var frameState = scenario.State with { PotOverlay = potOverlayOptions, PatrolOverlay = patrolOverlayOptions, PhantomOverlay = phantomOverlayOptions };
-                        if (scenario.Name == "carrot-stale-confirm" && frame >= 7) frameState = frameState with { Route = frameState.Route.Skip(1).ToArray() };
+                        var frameState = scenario.State with { PotOverlay = potOverlayOptions, PatrolOverlay = patrolOverlayOptions, PhantomOverlay = phantomOverlayOptions, CarrotDisplay = carrotDisplayOptions };
+                        if (scenario.Name == "carrot-stale-confirm" && frame >= 7) frameState = frameState with { Carrots = frameState.Carrots! with { Revision = 1 } };
+                        if (scenario.Name == "carrot-report-route-advanced" && frame >= 7) frameState = frameState with { Route = frameState.Route.Skip(1).ToArray() };
                         if (frameState.Fates is { } potFates) frameState = frameState with { Fates = potFates with { FetchSharedTimeOnEntry = fetchPotTime } };
                         if (potDebugRetries > 0 && frameState.Fates?.Debug is { } potDebug)
                             frameState = frameState with { Fates = frameState.Fates with { Debug = potDebug with { CanRetry = false, RetryDetail = "查詢尚未完成，請等待結果。" } } };
@@ -629,12 +661,27 @@ unsafe
                 throw new InvalidOperationException("Route selection must dispatch both directions without starting movement.");
             if (scenario.Name == "bocchi-route-invalid" && patrolRouteCalls.Count != 0)
                 throw new InvalidOperationException("Unavailable imported data cannot be selected as a route.");
-            if (scenario.Name.StartsWith("carrot") && view.CarrotRowsDrawn != 25)
+            if (scenario.Name.StartsWith("carrot-display") && (!carrotDisplayCalls.SequenceEqual(new[] { "overlay-True", "overlay-False" }) ||
+                carrotDisplayOptions != new CompassCarrotDisplayOptions(false) || actionCount != beforeActions || carrotConfirmations.Count != 0 || carrotResets != 0))
+                throw new InvalidOperationException("Carrot overlay toggle must not modify patrol or weights.");
+            if (scenario.Name.StartsWith("carrot") && view.CarrotTargets.Keys.Any(k => k.Contains("minimap", StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("Removed minimap controls must not remain in the UI.");
+            if (scenario.Name.StartsWith("carrot") && scenario.Name is not ("carrot-display-settings" or "carrot-display-off-island") && view.CarrotRowsDrawn != 25)
                 throw new InvalidOperationException("Every carrot pad, including visited ones, must stay visible in weight records.");
             if (scenario.Name == "carrot-route-switch" && !patrolRouteCalls.SequenceEqual(new[] { PatrolRouteKind.Bocchi, PatrolRouteKind.Carrot }))
                 throw new InvalidOperationException("Carrot route must be selectable independently of chest routes.");
-            if (scenario.Name == "carrot-actions" && (carrotResets != 1 || !carrotConfirmations.SequenceEqual(new[] { carrotState.Route[0].Spot.Id })))
+            if (scenario.Name == "carrot-actions" && (carrotResets != 1 || !carrotConfirmations.SequenceEqual(new[] { (carrotPads[0].Id, 0) })))
                 throw new InvalidOperationException("Carrot manual confirmation must carry the chosen pad identity, and reset must dispatch once.");
+            if (scenario.Name == "carrot-report-paused" && !carrotConfirmations.SequenceEqual(new[] { (carrotPads[14].Id, 0) }))
+                throw new InvalidOperationException("Manual report must accept #15 while paused, independent of route head and player proximity.");
+            if (scenario.Name is "carrot-report-no-route" or "carrot-report-route-advanced" && !carrotConfirmations.SequenceEqual(new[] { (carrotPads[0].Id, 0) }))
+                throw new InvalidOperationException("Manual report must survive route advance and work without any planned route.");
+            if (scenario.Name == "carrot-report-row" && !carrotConfirmations.SequenceEqual(new[] { (carrotPads[5].Id, 0) }))
+                throw new InvalidOperationException("A table row report must confirm that row's point instead of the numeric selector.");
+            if (scenario.Name.StartsWith("carrot-report") && (autoPatrolCalls.Count != 0 || actionCount != beforeActions))
+                throw new InvalidOperationException("Reporting a pickup must not issue flag, route, next-stop or movement actions.");
+            if (scenario.Name == "carrot-report-cancel" && carrotConfirmations.Count != 0)
+                throw new InvalidOperationException("Cancelling a pickup report must not change weights.");
             if (scenario.Name is "carrot-stale-confirm" or "carrot-off-island" && (carrotResets != 0 || carrotConfirmations.Count != 0))
                 throw new InvalidOperationException("Off-island or changed-target confirmation must not change carrot weights.");
             if (scenario.Name == "auto-patrol-off-island" && autoPatrolCalls.Count != 0)

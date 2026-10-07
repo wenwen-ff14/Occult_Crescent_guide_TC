@@ -33,7 +33,9 @@ internal sealed class MainWindow : Window
             SetPotFateSoonNotify: plugin.SetPotFateSoonNotify, SetAutoPatrol: plugin.SetAutoPatrol,
             PhantomOverlay: new(plugin.SetPhantomOverlayVisible), SetFetchPotTimeOnEntry: plugin.SetFetchPotTimeOnEntry,
             SetPatrolRoute: plugin.SetPatrolRoute, RetryPotTime: plugin.RetryPotTime,
-            ConfirmCarrotPickup: plugin.ConfirmCarrotPickup, ResetCarrotWeights: plugin.ResetCarrotWeights);
+            ConfirmCarrotPickup: plugin.ConfirmCarrotPickup, ResetCarrotWeights: plugin.ResetCarrotWeights,
+            CarrotDisplay: new(plugin.SetCarrotOverlayVisible),
+            DrawCarrotToolButton: Plugin.DrawCarrotToolButton);
     }
 
     internal static string KindName(SpotKind kind) => CompassView.KindName(kind);
@@ -88,7 +90,7 @@ internal sealed class MainWindow : Window
             PotOverlay: new(config.ShowPotCountdownOverlay),
             PatrolOverlay: new(config.ShowPatrolOverlay), AutoPatrol: plugin.AutoPatrolState,
             PhantomOverlay: new(config.ShowPhantomJobOverlay),
-            Carrots: new(plugin.CarrotWeights.Pickups, plugin.CarrotDetail, plugin.CanConfirmCarrot)), actions);
+            Carrots: plugin.CarrotState, CarrotDisplay: plugin.CarrotDisplayOptions), actions);
     }
 
     private CompassFateState FateState()

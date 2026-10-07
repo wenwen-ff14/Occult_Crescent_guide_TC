@@ -10,7 +10,9 @@ internal sealed record CompassFilters(bool Carrots, bool Silver, bool Bronze, Po
 internal sealed record CompassPotState(bool Active, bool AutoFlag, string Detail, int Candidates, bool Revealed, string? Coordinates,
     string AutomationDetail = "收到新提示時自動更新旗標。");
 internal sealed record CompassPoint(Spot Spot, SpotStatus Status, string Coordinates, float Distance, DateTimeOffset? LastSeen, double? WalkingDistance = null, bool LivePath = false, int? ChartNumber = null, int? CarrotWeight = null);
-internal sealed record CompassCarrotState(int Pickups, string Detail, bool CanConfirm);
+internal sealed record CompassCarrotState(int Pickups, string Detail, bool CanConfirm, int Revision = 0);
+internal sealed record CompassCarrotDisplayOptions(bool Overlay);
+internal sealed record CompassCarrotDisplayActions(Action<bool> SetOverlay);
 internal sealed record CompassRouteControls(bool ChartMode, int StartNumber, bool Paused, ChestOpenProgress? LastOpen,
     IReadOnlyList<CompassPoint> ChartPoints, int MapRevision = 0, PatrolRouteKind RouteKind = PatrolRouteKind.Chart,
     int? NextChartNumber = null, bool BocchiAvailable = true, string RouteDetail = "");
@@ -53,7 +55,7 @@ internal sealed record CompassViewState(
     CompassCeState? Ce = null, string PluginVersion = "預覽", CompassGeneralFates? GeneralFates = null, CompassWaymarkState? Waymarks = null,
     bool AutoOpenNearbyChests = false, string AutoChestDetail = "關閉；勾選後自動開啟 2 公尺內的寶箱。", CompassPhantomJobs? PhantomJobs = null, CompassLootState? Loot = null,
     CompassPotOverlayOptions? PotOverlay = null, CompassPatrolOverlayOptions? PatrolOverlay = null, CompassAutoPatrolState? AutoPatrol = null,
-    CompassPhantomOverlayOptions? PhantomOverlay = null, CompassCarrotState? Carrots = null);
+    CompassPhantomOverlayOptions? PhantomOverlay = null, CompassCarrotState? Carrots = null, CompassCarrotDisplayOptions? CarrotDisplay = null);
 internal sealed record CompassActions(
     Action<CompassFilters> SetFilters, Action<bool> SetWorldHints, Action Plan,
     Action<Spot?> Flag, Action Next, Action Restart,
@@ -71,4 +73,5 @@ internal sealed record CompassActions(
     Action<bool>? SetPotFateSoonNotify = null, Action<bool>? SetAutoPatrol = null, CompassPhantomOverlayActions? PhantomOverlay = null,
     Action<bool>? SetFetchPotTimeOnEntry = null, Action<string>? CopyPotTimeDebug = null,
     Action<PatrolRouteKind>? SetPatrolRoute = null, Action? RetryPotTime = null,
-    Action<string>? ConfirmCarrotPickup = null, Action? ResetCarrotWeights = null);
+    Action<string, int>? ConfirmCarrotPickup = null, Action? ResetCarrotWeights = null,
+    CompassCarrotDisplayActions? CarrotDisplay = null, Func<CarrotTool, Vector2, bool>? DrawCarrotToolButton = null);

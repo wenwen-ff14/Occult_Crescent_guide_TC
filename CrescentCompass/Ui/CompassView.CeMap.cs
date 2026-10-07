@@ -10,9 +10,13 @@ internal sealed partial class CompassView
     private readonly MapViewport ceMapViewport = new();
     private bool ceMapReady;
     private ushort selectedCe = 33;
+    private ushort? cePressed;
+    private bool ceMapDragged;
     internal Dictionary<string, Vector2> CeTargets { get; } = [];
     internal (Vector2 Origin, Vector2 Size) CeMapArea { get; private set; }
     internal float CeMapZoom => ceMapViewport.Zoom;
+    internal Vector2 CeMapCenter => ceMapViewport.Center;
+    internal ushort SelectedCe => selectedCe;
 
     private void DrawCeSelection(CompassViewState state, CompassActions actions, CeCooldownEntry[] rows, DateTimeOffset now)
     {
@@ -58,8 +62,15 @@ internal sealed partial class CompassView
             ImGuiP.SetItemUsingMouseWheel();
             if (io.KeyCtrl && io.MouseWheel != 0) ceMapViewport.ZoomAt(io.MouseWheel, ImGui.GetMousePos() - origin, size);
         }
-        if (ImGui.IsItemActive() && (ImGui.IsMouseDragging(ImGuiMouseButton.Right, 0) || ImGui.IsMouseDragging(ImGuiMouseButton.Middle, 0)))
+        var active = ImGui.IsItemActive();
+        if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) ceMapDragged = false;
+        if (active && (ImGui.IsMouseDragging(ImGuiMouseButton.Left) || ImGui.IsMouseDragging(ImGuiMouseButton.Right) ||
+            ImGui.IsMouseDragging(ImGuiMouseButton.Middle)))
+        {
             ceMapViewport.Pan(io.MouseDelta, size);
+            ceMapDragged = true;
+            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
+        }
         Vector2 Project(Vector2 world) => origin + ceMapViewport.Project(world, size);
         var zoom = ceMapViewport.Zoom;
         float M(float value) => U(value) * zoom;
@@ -102,12 +113,16 @@ internal sealed partial class CompassView
             draw.AddCircleFilled(player, M(5), Pack(Mint)); draw.AddCircle(player, M(7), Pack(Background), 0, M(2));
         }
         draw.PopClipRect();
-        if (hoverRow is { } item)
+        if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) cePressed = hoverRow?.Definition.Id;
+        if (hoverRow is { } item && !ceMapDragged)
         {
             ImGui.SetTooltip($"{item.Definition.Name}\n{CeLabel(item, now)}\n{item.Definition.TriggerCondition}\n上次觀測結束：{item.EndedAt?.ToLocalTime().ToString("HH:mm:ss") ?? "未知"}\n點選查看座標與插旗");
-            if (ImGui.IsMouseClicked(ImGuiMouseButton.Left)) selectedCe = item.Definition.Id;
+            if (ImGui.IsMouseReleased(ImGuiMouseButton.Left) && cePressed == item.Definition.Id) selectedCe = item.Definition.Id;
         }
         else if (hovered && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) ceMapReady = false;
+        if (ImGui.IsMouseReleased(ImGuiMouseButton.Left)) cePressed = null;
+        if (!ImGui.IsMouseDown(ImGuiMouseButton.Left) && !ImGui.IsMouseDown(ImGuiMouseButton.Right) && !ImGui.IsMouseDown(ImGuiMouseButton.Middle))
+            ceMapDragged = false;
     }
 
     private Vector2 CeLabelPosition(Vector2 p, Vector2 size, Vector2 origin, Vector2 area, List<(Vector2 Min, Vector2 Max)> occupied, float zoom)

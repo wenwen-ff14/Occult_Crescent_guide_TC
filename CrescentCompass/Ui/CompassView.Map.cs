@@ -63,7 +63,7 @@ internal sealed partial class CompassView
                 if (compact) ImGui.SameLine();
                 ImGui.BeginDisabled(state.Controls?.Paused == true);
                 if (ImGui.Button("已巡查 → 下一站", new Vector2(width, U(36)))) actions.Next();
-                if (next.ChartNumber is not null && actions.ConfirmOpened is not null)
+                if (next.Spot.Kind != SpotKind.Carrot && next.ChartNumber is not null && actions.ConfirmOpened is not null)
                 {
                     if (ImGui.SmallButton("手動確認此箱已開")) actions.ConfirmOpened();
                     HoverHint("自動紀錄未捕捉到時使用；這會記錄目前編號為已開箱並切到下一站。空點或只經過請用「已巡查」。");
@@ -143,8 +143,8 @@ internal sealed partial class CompassView
         {
             var point = points[i]; var p = projected[i]; var head = point.Spot.Id == headId;
             if (p.X < origin.X - U(16) || p.Y < origin.Y - U(16) || p.X > origin.X + size.X + U(16) || p.Y > origin.Y + size.Y + U(16)) continue;
-            var complete = point.Status is SpotStatus.Visited or SpotStatus.Skipped;
-            var color = complete ? Muted : KindColor(point.Spot.Kind);
+            var complete = point.CarrotWeight is { } currentWeight ? currentWeight == 0 : point.Status is SpotStatus.Visited or SpotStatus.Skipped;
+            var color = point.CarrotWeight is { } weight ? weight == 2 ? Mint : weight == 1 ? Gold : Muted : complete ? Muted : KindColor(point.Spot.Kind);
             var selected = chart && point.ChartNumber == state.Controls!.StartNumber;
             if (head || i == hoveredIndex) draw.AddCircleFilled(p, U(12), Pack(Alpha(color, 0.15f)));
             draw.AddCircleFilled(p, U(head ? 5 : 3.5f), Pack(Alpha(color, complete ? 0.3f : point.Status == SpotStatus.Visible ? 1 : 0.75f)));
@@ -167,7 +167,8 @@ internal sealed partial class CompassView
         {
             var point = points[hoveredIndex];
             var title = point.ChartNumber is { } number ? $"圖表 #{number:00}" : $"第 {hoveredIndex + 1} 站";
-            ImGui.SetTooltip($"{title} · {point.Spot.Name ?? KindName(point.Spot.Kind)}\n{point.Coordinates}\n{StatusName(point.Status)}\n點擊插旗" +
+            ImGui.SetTooltip($"{title} · {point.Spot.Name ?? KindName(point.Spot.Kind)}\n{point.Coordinates}\n{StatusName(point.Status)}" +
+                (point.CarrotWeight is { } score ? $"\n搜尋權重：{(score == 0 ? "0" : $"+{score}")}（非精確機率）" : "") + "\n點擊插旗" +
                 (chart ? "\nCtrl＋點擊設定起點，再按「從此編號開始」" : ""));
             if (clicked)
             {

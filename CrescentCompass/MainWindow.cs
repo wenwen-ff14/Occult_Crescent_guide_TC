@@ -28,9 +28,12 @@ internal sealed class MainWindow : Window
             plugin.SetAutoOpenNearbyChests, plugin.SwitchPhantomJob, Plugin.DrawPhantomJobIcon,
             RefreshPhantomMacroIcons: plugin.RefreshPhantomMacroIcons, Loot: new(plugin.SetLootKeep, plugin.SetLootMode, plugin.SetLootArmed),
             GetGameTexture: Plugin.GetGameTexture, FlagCeLocation: plugin.FlagCeLocation,
-            PotOverlay: new(plugin.SetPotOverlayVisible, plugin.SetPotOverlayLocked, plugin.ResetPotOverlayPosition),
-            PatrolOverlay: new(plugin.SetPatrolOverlayVisible, plugin.SetPatrolOverlayLocked, plugin.ResetPatrolOverlayPosition),
-            SetPotFateSoonNotify: plugin.SetPotFateSoonNotify);
+            PotOverlay: new(plugin.SetPotOverlayVisible),
+            PatrolOverlay: new(plugin.SetPatrolOverlayVisible),
+            SetPotFateSoonNotify: plugin.SetPotFateSoonNotify, SetAutoPatrol: plugin.SetAutoPatrol,
+            PhantomOverlay: new(plugin.SetPhantomOverlayVisible), SetFetchPotTimeOnEntry: plugin.SetFetchPotTimeOnEntry,
+            SetPatrolRoute: plugin.SetPatrolRoute, RetryPotTime: plugin.RetryPotTime,
+            ConfirmCarrotPickup: plugin.ConfirmCarrotPickup, ResetCarrotWeights: plugin.ResetCarrotWeights);
     }
 
     internal static string KindName(SpotKind kind) => CompassView.KindName(kind);
@@ -45,8 +48,9 @@ internal sealed class MainWindow : Window
     {
         var now = DateTimeOffset.UtcNow;
         var config = plugin.Config;
-        CompassPoint Display(TrackedSpot spot) => new(spot.Spot, spot.Status, Plugin.MapPosition(spot.Spot), Vector3.Distance(plugin.Position, spot.Spot.Position), spot.LastSeen, ChartNumber: ChestChart.Number(spot.Spot));
-        var chartPoints = plugin.Session.Snapshot().Where(s => ChestChart.Number(s.Spot) is not null).Select(Display).OrderBy(s => s.ChartNumber).ToArray();
+        CompassPoint Display(TrackedSpot spot) => new(spot.Spot, spot.Status, Plugin.MapPosition(spot.Spot), Vector3.Distance(plugin.Position, spot.Spot.Position), spot.LastSeen,
+            ChartNumber: CarrotRoute.Number(spot.Spot) ?? ChestChart.Number(spot.Spot), CarrotWeight: plugin.CarrotWeights.Weight(spot.Spot.Id));
+        var chartPoints = plugin.Session.Snapshot().Where(s => plugin.CarrotMode ? CarrotRoute.Number(s.Spot) is not null : ChestChart.Number(s.Spot) is not null).Select(Display).OrderBy(s => s.ChartNumber).ToArray();
         var points = plugin.Session.Snapshot().Where(s => plugin.Session.CanDisplay(s.Spot.Id, config.DisplayMode)).Select(Display).ToArray();
         var currentLeg = plugin.CurrentLeg;
         var legs = plugin.Remaining.Select((stop, i) =>
@@ -71,7 +75,8 @@ internal sealed class MainWindow : Window
             plugin.IsPlanning, plugin.NavigationDetail, legs,
             plugin.WalkingRoute?.Unreachable.Where(s => plugin.Session.CanPatrol(s.Id)).ToArray(),
             plugin.PatrolSuspended, plugin.ExplorationDetail, config.HideOtherPlayers, plugin.PlayerVisibilityDetail,
-            new CompassRouteControls(config.UseChartRoute, config.ChartStartNumber, plugin.IsPaused, plugin.LastChestOpen, chartPoints, plugin.MapRevision),
+            new CompassRouteControls(config.UseChartRoute, plugin.PatrolStartNumber, plugin.IsPaused, plugin.LastChestOpen, chartPoints, plugin.MapRevision,
+                config.PatrolRoute, plugin.NextPatrolChartNumber, plugin.BocchiRouteAvailable, plugin.PatrolRouteDetail),
             new CompassCeState(config.TrackCeCooldowns, plugin.CeCooldowns.Snapshot(now), now),
             PluginVersion: typeof(Plugin).Assembly.GetName().Version?.ToString(3) ?? "未知版本",
             GeneralFates: new(config.AutoFlagFates, plugin.FateFlags.OwnsNavigation(now), plugin.FateFlags.Detail,
@@ -80,8 +85,10 @@ internal sealed class MainWindow : Window
                     $"{(f.Preparing ? "準備中" : $"進度 {f.Progress}%")}" + (f.EndsAt is { } end ? $" · 剩餘 {Math.Max(0, (int)(end - now).TotalMinutes):00}:{Math.Max(0, (int)(end - now).TotalSeconds) % 60:00}" : ""),
                     plugin.Active && Coordinates.IsFinite(f.Position))).ToArray()), Waymarks: plugin.WaymarkState(),
             AutoOpenNearbyChests: config.AutoOpenNearbyChests, AutoChestDetail: plugin.AutoChestDetail, PhantomJobs: plugin.PhantomJobState, Loot: plugin.LootState,
-            PotOverlay: new(config.ShowPotCountdownOverlay, config.LockPotCountdownOverlay),
-            PatrolOverlay: new(config.ShowPatrolOverlay, config.LockPatrolOverlay)), actions);
+            PotOverlay: new(config.ShowPotCountdownOverlay),
+            PatrolOverlay: new(config.ShowPatrolOverlay), AutoPatrol: plugin.AutoPatrolState,
+            PhantomOverlay: new(config.ShowPhantomJobOverlay),
+            Carrots: new(plugin.CarrotWeights.Pickups, plugin.CarrotDetail, plugin.CanConfirmCarrot)), actions);
     }
 
     private CompassFateState FateState()
@@ -100,6 +107,7 @@ internal sealed class MainWindow : Window
         var next = snapshot.Next is { } definition ? $"{definition.Side} · {definition.Name}" : "下一場尚未確定";
         var detail = snapshot.ExpectedAt is null ? "尚無本場紀錄，偵測到魔法罐 FATE 後自動開始倒數。" : snapshot.ExpectedAt <= now
             ? "已到預估時間；等待實際偵測，不會直接宣告 FATE 出現。"
+            : snapshot.IsSharedEstimate ? $"預估 {snapshot.ExpectedAt.Value.ToLocalTime():HH:mm:ss} · 進島共享時間，由本機倒數。"
             : snapshot.UsesGameStart ? $"預估 {snapshot.ExpectedAt.Value.ToLocalTime():HH:mm:ss} · 依上次 FATE 開始時間加 30 分鐘。"
             : "依首次偵測時間加 30 分鐘推估，可能晚於實際出現時間。";
         if (!snapshot.ScanFresh && snapshot.ExpectedAt is not null) detail = "FATE 偵測暫停；" + detail;
@@ -109,7 +117,8 @@ internal sealed class MainWindow : Window
             return new CompassFatePoint(d.Id, location?.Name ?? $"{(d.Side == "北側" ? "北罐" : "南罐")} · {d.Name}",
                 location is null ? "座標資料尚未載入" : Plugin.MapPosition(location), "固定 FATE 地點", location is not null);
         }).ToArray();
-        return new(plugin.Config.NotifyPotFateSpawn, countdown, next, detail, points, locations, plugin.Config.NotifyPotFateSoon);
+        return new(plugin.Config.NotifyPotFateSpawn, countdown, next, detail, points, locations, plugin.Config.NotifyPotFateSoon,
+            plugin.Config.FetchPotTimeOnEntry, plugin.PotTimeSyncDetail, plugin.PotTimeDebugState());
     }
 
     private void SetFilters(CompassFilters filters)

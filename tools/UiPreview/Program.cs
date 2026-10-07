@@ -116,6 +116,9 @@ unsafe
             Message = "已從傳送落點接續，巡查紀錄保留。下一站步行路段隨角色位置更新。" };
         using var chestStream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "treasure_locations.json"));
         var chestCatalog = SpotCatalog.Load(chestStream);
+        using var bocchiStream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "treasure_route.json"));
+        using var bocchiDistances = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "precomputed_treasure_hunt_data.json"));
+        var bocchi = BocchiPatrolRoute.Load(bocchiStream, bocchiDistances, chestCatalog);
         var chartPoints = ChestChart.Order(chestCatalog, 1).Select(s => new CompassPoint(s, SpotStatus.Candidate,
             $"X {Coordinates.ToMap(s.Position.X, 100, 0):F1} / Y {Coordinates.ToMap(s.Position.Z, 100, 0):F1}",
             Vector3.Distance(origin, s.Position), null, ChartNumber: ChestChart.Number(s))).ToArray();
@@ -124,8 +127,36 @@ unsafe
             GroundLegs = [], TotalStops = 68, CompletedStops = 0, SkippedStops = 0, Controls = chartControls,
             Message = "從圖表 #24 出發，24 → 68 → 1 → 23。此圖為離線介面預覽，未模擬地形路徑。", NavigationDetail = "地形路段待計算", RouteChanged = false };
         var actionCount = 0;
-        var potOverlayOptions = new CompassPotOverlayOptions(false, true);
-        var patrolOverlayOptions = new CompassPatrolOverlayOptions(false, true);
+        var bocchiStops = bocchi.Order(24);
+        var bocchiPoints = bocchiStops.Select(s => chartPoints.Single(p => p.Spot.Id == s.Id)).ToArray();
+        var bocchiState = chartState with { Route = bocchiPoints,
+            Controls = chartControls with { RouteKind = PatrolRouteKind.Bocchi, NextChartNumber = bocchi.NextChartNumber(23),
+                RouteDetail = $"BOCCHI · 區段 1/7 · base-camp · 站間參考 {bocchi.ReferenceCosts(bocchiStops)!.Distance / 1000:F1} km（66/67 段）" },
+            Message = "依 BOCCHI 分區順序巡查，跨區段使用地面尋路。", AutoPatrol = new(false, true, "未啟動") };
+        PatrolRouteKind? selectedPatrolRoute = null;
+        List<PatrolRouteKind> patrolRouteCalls = [];
+        var carrotWeights = new CarrotSearchWeights();
+        var carrotPads = CarrotRoute.Order(catalog);
+        carrotWeights.Reset(carrotPads);
+        foreach (var pad in carrotPads.Take(4)) carrotWeights.CheckEmpty(pad.Id);
+        carrotWeights.ConfirmPickup(carrotPads[4].Id);
+        var carrotPoints = carrotPads.Select((s, i) => new CompassPoint(s, i < 5 ? SpotStatus.Visited : SpotStatus.Candidate,
+            $"X {Coordinates.ToMap(s.Position.X, 100, 0):F1} / Y {Coordinates.ToMap(s.Position.Z, 100, 0):F1}",
+            Vector3.Distance(origin, s.Position), null, ChartNumber: CarrotRoute.Number(s), CarrotWeight: carrotWeights.Weight(s.Id))).ToArray();
+        var carrotState = chartState with { Route = carrotPoints.Skip(5).ToArray(), Points = carrotPoints, TotalStops = 25, CompletedStops = 5,
+            Controls = new(true, 1, false, null, carrotPoints, RouteKind: PatrolRouteKind.Carrot, RouteDetail: "蘿蔔圖表 1～25 · 固定巡航 · 權重 0 / +1 / +2"),
+            Carrots = new(1, "已確認使用蘿蔔。", true), AutoPatrol = new(false, true, "未啟動"),
+            Message = "蘿蔔 #5 已拾取，先前空點 +1；尚未探過的點 +2。" };
+        List<string> carrotConfirmations = [];
+        var carrotResets = 0;
+        var potOverlayOptions = new CompassPotOverlayOptions(false);
+        var patrolOverlayOptions = new CompassPatrolOverlayOptions(false);
+        var phantomOverlayOptions = new CompassPhantomOverlayOptions(false);
+        List<bool> phantomOverlayCalls = [];
+        var fetchPotTime = true;
+        List<bool> fetchPotTimeCalls = [];
+        List<string> potDebugCopies = [];
+        var potDebugRetries = 0;
         List<string> patrolOverlayCalls = [];
         List<string> potOverlayCalls = [];
         var waymarkCalls = new List<string>();
@@ -134,6 +165,8 @@ unsafe
         bool? ignoreDistanceSetting = null;
         bool? autoChestSetting = null;
         List<bool> autoChestCalls = [];
+        bool? autoPatrolSetting = null;
+        List<bool> autoPatrolCalls = [];
         List<byte> phantomSwitchCalls = [];
         List<string> phantomCopies = [];
         var phantomIconRefreshes = 0;
@@ -149,16 +182,17 @@ unsafe
                 (_, _) => ActionCalled(), _ => null, () => { ActionCalled(); waymarkCalls.Add("cancel"); },
                 value => { ActionCalled(); ignoreDistanceSetting = value; waymarkCalls.Add(value ? "distance-on" : "distance-off"); }),
             SetAutoOpenNearbyChests: value => { ActionCalled(); autoChestSetting = value; autoChestCalls.Add(value); },
+            SetAutoPatrol: value => { ActionCalled(); autoPatrolSetting = value; autoPatrolCalls.Add(value); },
             SwitchPhantomJob: id => phantomSwitchCalls.Add(id), CopyPhantomMacro: text => phantomCopies.Add(text),
             DrawPhantomJobIcon: (id, size) => { if (!textures.ContainsKey(id)) return false; ImGui.Image(new ImTextureID(id), size); return true; },
             RefreshPhantomMacroIcons: () => phantomIconRefreshes++, Loot: new((_, _) => ActionCalled(), _ => ActionCalled(), _ => ActionCalled()),
             GetGameTexture: path => ceTextureIds.GetValueOrDefault(path), FlagCeLocation: (id, trigger) => ceFlags.Add((id, trigger)),
-            PotOverlay: new(value => { potOverlayOptions = potOverlayOptions with { Enabled = value }; potOverlayCalls.Add("visible-" + value); },
-                value => { potOverlayOptions = potOverlayOptions with { Locked = value }; potOverlayCalls.Add("locked-" + value); },
-                () => potOverlayCalls.Add("reset")),
-            PatrolOverlay: new(value => { patrolOverlayOptions = patrolOverlayOptions with { Enabled = value }; patrolOverlayCalls.Add("visible-" + value); },
-                value => { patrolOverlayOptions = patrolOverlayOptions with { Locked = value }; patrolOverlayCalls.Add("locked-" + value); },
-                () => patrolOverlayCalls.Add("reset")));
+            PotOverlay: new(value => { potOverlayOptions = potOverlayOptions with { Enabled = value }; potOverlayCalls.Add("visible-" + value); }),
+            PatrolOverlay: new(value => { patrolOverlayOptions = patrolOverlayOptions with { Enabled = value }; patrolOverlayCalls.Add("visible-" + value); }),
+            PhantomOverlay: new(value => { phantomOverlayOptions = phantomOverlayOptions with { Enabled = value }; phantomOverlayCalls.Add(value); }),
+            SetFetchPotTimeOnEntry: value => { fetchPotTime = value; fetchPotTimeCalls.Add(value); }, CopyPotTimeDebug: potDebugCopies.Add,
+            SetPatrolRoute: value => { ActionCalled(); selectedPatrolRoute = value; patrolRouteCalls.Add(value); },
+            RetryPotTime: () => potDebugRetries++, ConfirmCarrotPickup: carrotConfirmations.Add, ResetCarrotWeights: () => carrotResets++);
         var demoWaymark = new WaymarkPreset(Guid.NewGuid(), "南部 · 戰鬥集合點（示範）", 1252,
             new DateTimeOffset(2026, 10, 3, 18, 25, 0, TimeSpan.FromHours(8)),
             Enumerable.Range(0, 8).Select(i => new SavedWaymark(120 + i * 2, 5, -240 + i * 3, i < 6)).ToArray());
@@ -189,21 +223,101 @@ unsafe
             [new(1976, "幸福的魔法甕", "X 25.5 / Y 17.2", "進度 25% · 剩餘 13:24"),
              new(1963, "一般 FATE（示範）", "X 20.0 / Y 15.0", "進度 42% · 剩餘 08:25")]) };
         using var lootStream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "loot_catalog.json"));
-        var lootState = state with { Loot = new(LootCleanup.Load(lootStream), new HashSet<uint> { 8143 }, new Dictionary<uint, int> { [8143] = 99 }, LootCleanupMode.Discard, false, "未啟動；先標記垃圾再啟動。", 0) };
+        var lootState = state with { Loot = new(LootCleanup.Load(lootStream), new HashSet<uint> { 8143, 21057 }, new Dictionary<uint, int> { [8143] = 99, [21057] = 2, [48204] = 1 }, LootCleanupMode.Discard, false, "未啟動；先標記垃圾再啟動。", 0) };
         if (args.Length <= 1 || args[1] == "pot-overlay") PotOverlayPreview.Run(output, textures);
         if (args.Length <= 1 || args[1] == "patrol-overlay") PatrolOverlayPreview.Run(output, textures);
+        if (args.Length <= 1 || args[1] is "phantom-" or "phantom-overlay") PhantomOverlayPreview.Run(output, textures);
+        if (args.Length <= 1 || args[1] is "ce-" or "ce-interaction") CeInteractionPreview.Run(output, textures, ceState, actions);
+        var debugKey = PotEntryTimeSync.Fingerprint(3, new(1963, 1_800_000_000));
+        var debugRows = new CompassPotTimeDebugRow[]
+        {
+            new("診斷版本", "0.10.20.0 / pot-debug-3"), new("查詢狀態", "NotFound · 查無共享時間，等待本機觀測；不自動重試。"),
+            new("共享來源", "OccultOverlay / Eureka Linker"), new("單次比對指紋數", "2 個有效 FATE；共用一個 GET"),
+            new("目前阻擋條件", "無；僅進島自動查詢或手動重試"), new("HTTP / 結果", "200 / NotFound / not-found"),
+            new("耗時 / 讀取量", "186 ms / 2 bytes"), new("本場請求次數", "1（自動 1 / 手動 0）；不上傳、不自動重試"),
+            new("手動重試", "手動查詢一次最新共享時間；每次請求間隔至少 10 秒，不上傳本機資料。"),
+            new("場次建立 (UTC)", "2026-10-07 01:00:00 UTC"), new("送出 / 完成 (UTC)", "2026-10-07 01:00:03 UTC\n2026-10-07 01:00:04 UTC"),
+            new("目前區域 / 分流", "1252 / 1"), new("目前資料中心", "3 · 目前世界資料已就緒"),
+            new("FATE 掃描 (UTC)", "2026-10-07 01:01:00 UTC · 掃描成功"),
+            new("FATE 篩選數", "表內 12 → 有效同區 10 → 進行／準備且位置有效 8 → 時間戳有效 7"),
+            new("請求使用的場次", "區域 1252 / 分流 1 / DC 3"), new("請求來源 FATE", "ID 1963 / StartUnix 1800000000"),
+            new("請求指紋 SHA256", string.Join("\n", new[] { debugKey, PotEntryTimeSync.Fingerprint(3, new(1964, 1800000001)) }
+                .Select(key => key[..32] + "\n" + key[32..]))),
+            new("回應計時資料", "--"), new("目前倒數來源", "未知"), new("預估下次 (UTC)", "--"), new("服務", PotSharedTimeClient.Endpoint),
+        };
+        var debugState = state with { Fates = state.Fates! with { SharedTimeDetail = "查無共享時間，等待本機觀測；不自動重試。",
+            Debug = new("OccultTrackerV3 回傳空陣列：目前副本指紋沒有共享紀錄；不是連線失敗。", debugRows, true,
+                "手動查詢一次最新共享時間；每次請求間隔至少 10 秒，不上傳本機資料。") } };
         foreach (var scenario in new[]
         {
+            (Name: "carrot-route", Width: 960, Height: 1700, Scale: 1f, State: carrotState),
+            (Name: "carrot-route-compact", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
+            (Name: "carrot-route-short", Width: 690, Height: 900, Scale: 1f, State: carrotState),
+            (Name: "carrot-route-scaled", Width: 1020, Height: 2200, Scale: 1.5f, State: carrotState),
+            (Name: "carrot-route-switch", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
+            (Name: "carrot-actions", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
+            (Name: "carrot-stale-confirm", Width: 690, Height: 1400, Scale: 1f, State: carrotState),
+            (Name: "carrot-off-island", Width: 690, Height: 1400, Scale: 1f, State: carrotState with { Active = false,
+                Carrots = carrotState.Carrots! with { CanConfirm = false }, AutoPatrol = new(false, false, "請先進島。") }),
+            (Name: "bocchi-route", Width: 960, Height: 1500, Scale: 1f, State: bocchiState),
+            (Name: "bocchi-route-compact", Width: 690, Height: 1250, Scale: 1f, State: bocchiState),
+            (Name: "bocchi-route-scaled", Width: 1020, Height: 1600, Scale: 1.5f, State: bocchiState),
+            (Name: "bocchi-route-switch", Width: 690, Height: 1250, Scale: 1f, State: bocchiState),
+            (Name: "bocchi-route-invalid", Width: 690, Height: 1250, Scale: 1f, State: bocchiState with {
+                Controls = bocchiState.Controls! with { RouteKind = PatrolRouteKind.Chart, BocchiAvailable = false,
+                    RouteDetail = "BOCCHI 路線資料驗證失敗。" } }),
+            (Name: "pot-debug", Width: 960, Height: 1700, Scale: 1f, State: debugState),
+            (Name: "pot-debug-compact", Width: 690, Height: 1700, Scale: 1f, State: debugState),
+            (Name: "pot-debug-short", Width: 690, Height: 900, Scale: 1f, State: debugState),
+            (Name: "pot-debug-scaled", Width: 1020, Height: 2000, Scale: 1.5f, State: debugState),
+            (Name: "pot-debug-off-island", Width: 690, Height: 1200, Scale: 1f, State: debugState with { Active = false,
+                Fates = debugState.Fates! with { Debug = debugState.Fates.Debug! with { CanRetry = false, RetryDetail = "目前不在新月島。" } } }),
+            (Name: "pot-debug-collapse", Width: 690, Height: 1000, Scale: 1f, State: debugState),
+            (Name: "pot-debug-retry", Width: 690, Height: 1200, Scale: 1f, State: debugState),
+            (Name: "pot-debug-retry-scaled", Width: 1020, Height: 1800, Scale: 1.5f, State: debugState),
+            (Name: "pot-debug-retry-cooldown", Width: 690, Height: 1200, Scale: 1f, State: debugState with {
+                Fates = debugState.Fates! with { Debug = debugState.Fates.Debug! with { CanRetry = false, RetryDetail = "請等待 5 秒後重試。" } } }),
+            (Name: "pot-time-sync-shared", Width: 690, Height: 1200, Scale: 1f, State: state with { Fates = fateCountdown with {
+                Detail = "預估 13:00:00 · 進島共享時間，由本機倒數。", SharedTimeDetail = "已取得共享時間，後續由本機計時。" } }),
+            (Name: "pot-time-sync-scaled", Width: 1020, Height: 1500, Scale: 1.5f, State: state with { Fates = fateCountdown with {
+                Detail = "預估 13:00:00 · 進島共享時間，由本機倒數。", SharedTimeDetail = "已取得共享時間，後續由本機計時。" } }),
+            (Name: "pot-time-sync-toggle", Width: 690, Height: 1200, Scale: 1f, State: state with { Fates = state.Fates! with {
+                SharedTimeDetail = "查無共享時間，等待本機觀測；本次不重查。" } }),
+            (Name: "pot-time-sync-off-island", Width: 690, Height: 1200, Scale: 1f, State: state with { Active = false, Fates = state.Fates! with {
+                SharedTimeDetail = "進島後查詢一次共享時間。" } }),
+            (Name: "phantom-overlay-options-settings", Width: 690, Height: 1300, Scale: 1f, State: state),
+            (Name: "phantom-overlay-options-off-island", Width: 690, Height: 1300, Scale: 1f, State: state with { Active = false }),
+            (Name: "phantom-jobs-overlay-options", Width: 690, Height: 1300, Scale: 1f, State: state with { PhantomJobs = new(0, true, "已切換為輔助自由人。") }),
+            (Name: "auto-patrol", Width: 960, Height: 1320, Scale: 1f, State: chartState with { AutoPatrol = new(true, true, "自動前往 #24 · 距離 83 m · 快取 68 段") }),
+            (Name: "auto-patrol-compact", Width: 690, Height: 1200, Scale: 1f, State: chartState with { AutoPatrol = new(false, true, "未啟動") }),
+            (Name: "auto-patrol-scaled", Width: 1020, Height: 1500, Scale: 1.5f, State: chartState with { AutoPatrol = new(true, true, "已靠近寶箱，等待開箱完成。") }),
+            (Name: "auto-patrol-toggle", Width: 690, Height: 1200, Scale: 1f, State: chartState with { AutoPatrol = new(false, true, "未啟動") }),
+            (Name: "auto-patrol-off-island", Width: 690, Height: 980, Scale: 1f, State: chartState with { Active = false, AutoPatrol = new(false, false, "自動巡查僅支援新月島南部。") }),
+            (Name: "auto-patrol-paused", Width: 690, Height: 1200, Scale: 1f, State: chartState with { Controls = chartControls with { Paused = true }, AutoPatrol = new(true, true, "巡查已暫停，停止自動移動。") }),
+            (Name: "auto-patrol-blocked", Width: 690, Height: 1200, Scale: 1f, State: chartState with { Controls = chartControls with { Paused = true }, AutoPatrol = new(false, true, "找不到可接近此箱點的完整地面路徑，保留站點並停止。") }),
+            (Name: "auto-patrol-recovery-query", Width: 690, Height: 1200, Scale: 1f, State: chartState with { AutoPatrol = new(true, true, "正在檢查替代路徑（2/3）。 · 快取 68 段") }),
+            (Name: "auto-patrol-jump", Width: 690, Height: 1200, Scale: 1f, State: chartState with { AutoPatrol = new(true, true, "路程無進展，嘗試跳躍脫困（2/5）。 · 快取 68 段") }),
+            (Name: "auto-patrol-airborne-scaled", Width: 1020, Height: 1500, Scale: 1.5f, State: chartState with { AutoPatrol = new(true, true, "跳躍通過障礙物；落地後確認路程進展。 · 快取 68 段") }),
+            (Name: "auto-patrol-recovered", Width: 690, Height: 1200, Scale: 1f, State: chartState with { AutoPatrol = new(true, true, "脫困前往 #24 · 快取 68 段") }),
+            (Name: "auto-patrol-early-empty", Width: 690, Height: 1200, Scale: 1f, State: chartState with { AutoPatrol = new(true, true, "自動前往 #24 · 距離 38 m · 快取 2 段"), AutomationDetail = "未偵測到可用寶箱 · 確認 0.5 / 1.0 秒", Message = "已提前確認上一點沒有可用寶箱，前往下一站。" }),
+            (Name: "auto-patrol-recovery", Width: 1020, Height: 1500, Scale: 1.5f, State: chartState with { AutoPatrol = new(true, true, "移動 6 秒無進展，檢查側移／後退路徑（1/3）。 · 快取 12 段") }),
+            (Name: "auto-patrol-settling", Width: 690, Height: 1200, Scale: 1f, State: chartState with { AutoPatrol = new(true, true, "靠近寶箱，等待角色停穩。 · 快取 12 段") }),
+            (Name: "auto-patrol-recovery-query-scaled", Width: 1020, Height: 1500, Scale: 1.5f, State: chartState with { AutoPatrol = new(true, true, "正在檢查替代路徑（2/3）。 · 快取 68 段") }),
             (Name: "patrol-overlay-options", Width: 690, Height: 1250, Scale: 1f, State: chartState),
             (Name: "patrol-overlay-options-off-island", Width: 690, Height: 1000, Scale: 1f, State: chartState with { Active = false }),
-            (Name: "patrol-overlay-options-settings", Width: 690, Height: 1300, Scale: 1f, State: chartState with { PotOverlay = new(true, false) }),
-            (Name: "patrol-overlay-enabled", Width: 690, Height: 1450, Scale: 1f, State: chartState with { PatrolOverlay = new(true, false) }),
+            (Name: "patrol-overlay-options-settings", Width: 690, Height: 1300, Scale: 1f, State: chartState with { PotOverlay = new(true) }),
+            (Name: "patrol-overlay-enabled", Width: 690, Height: 1450, Scale: 1f, State: chartState with { PatrolOverlay = new(true) }),
             (Name: "pot-overlay-options", Width: 690, Height: 1200, Scale: 1f, State: state),
             (Name: "pot-overlay-options-off-island", Width: 690, Height: 1000, Scale: 1f, State: state with { Active = false }),
-            (Name: "pot-overlay-enabled", Width: 690, Height: 1200, Scale: 1f, State: state with { PotOverlay = new(true, false) }),
+            (Name: "pot-overlay-enabled", Width: 690, Height: 1200, Scale: 1f, State: state with { PotOverlay = new(true) }),
             (Name: "loot", Width: 940, Height: 980, Scale: 1f, State: lootState),
             (Name: "loot-compact", Width: 690, Height: 980, Scale: 1f, State: lootState),
             (Name: "loot-scaled", Width: 1020, Height: 1250, Scale: 1.5f, State: lootState),
+            (Name: "loot-minions", Width: 690, Height: 980, Scale: 1f, State: lootState),
+            (Name: "loot-orchestrion", Width: 690, Height: 980, Scale: 1f, State: lootState),
+            (Name: "loot-category-reset", Width: 940, Height: 980, Scale: 1f, State: lootState),
+            (Name: "loot-filter-combined", Width: 690, Height: 980, Scale: 1f, State: lootState),
+            (Name: "loot-filter-empty", Width: 690, Height: 980, Scale: 1f, State: lootState),
             (Name: "phantom-jobs", Width: 940, Height: 980, Scale: 1f, State: state with {
                 PhantomJobs = new(0, true, "示範資料 · 選擇職業切換，或複製巨集指令。") }),
             (Name: "phantom-jobs-compact", Width: 690, Height: 850, Scale: 1f, State: state with {
@@ -248,6 +362,8 @@ unsafe
             (Name: "waymarks-import-check", Width: 960, Height: 1000, Scale: 1f, State: waymarkState),
             (Name: "waymarks-cancel-check", Width: 960, Height: 1000, Scale: 1f, State: waymarkState with { Waymarks = waymarkState.Waymarks! with { CanCapture = false, CanPlace = false, Busy = true, Detail = "正在放置標點 B · 1／6" } }),
             (Name: "general-fates", Width: 960, Height: 900, Scale: 1f, State: generalFates),
+            (Name: "general-fates-default", Width: 690, Height: 900, Scale: 1f, State: state with { GeneralFates = null }),
+            (Name: "general-fates-disabled", Width: 690, Height: 900, Scale: 1f, State: generalFates with { GeneralFates = generalFates.GeneralFates! with { AutoFlag = false, Holding = false, Detail = "自動標點已關閉；手動插旗仍可使用。" } }),
             (Name: "general-fates-compact", Width: 690, Height: 900, Scale: 1f, State: generalFates),
             (Name: "general-fates-scaled", Width: 1020, Height: 1200, Scale: 1.5f, State: generalFates),
             (Name: "general-fates-off-island", Width: 690, Height: 900, Scale: 1f, State: generalFates with { Active = false, GeneralFates = new(true, false, "等待進入新月島。", []) }),
@@ -322,6 +438,7 @@ unsafe
             var view = new CompassView { Page = scenario.Name switch
             {
                 "patrol-overlay-options-settings" => CompassPage.Settings,
+                var name when name.StartsWith("phantom-overlay-options") => CompassPage.Settings,
                 var name when name.StartsWith("loot") => CompassPage.Loot,
                 var name when name.StartsWith("waymarks") => CompassPage.Waymarks,
                 var name when name.StartsWith("phantom-jobs") => CompassPage.Settings,
@@ -343,9 +460,15 @@ unsafe
             waymarkCalls.Clear();
             ignoreDistanceSetting = null;
             autoChestSetting = null; autoChestCalls.Clear();
+            autoPatrolSetting = null; autoPatrolCalls.Clear();
+            selectedPatrolRoute = null; patrolRouteCalls.Clear();
+            carrotConfirmations.Clear(); carrotResets = 0;
             phantomSwitchCalls.Clear(); phantomCopies.Clear(); phantomIconRefreshes = 0; ceFlags.Clear();
-            potOverlayOptions = scenario.State.PotOverlay ?? new(false, true); potOverlayCalls.Clear();
-            patrolOverlayOptions = scenario.State.PatrolOverlay ?? new(false, true); patrolOverlayCalls.Clear();
+            potOverlayOptions = scenario.State.PotOverlay ?? new(false); potOverlayCalls.Clear();
+            patrolOverlayOptions = scenario.State.PatrolOverlay ?? new(false); patrolOverlayCalls.Clear();
+            phantomOverlayOptions = scenario.State.PhantomOverlay ?? new(false); phantomOverlayCalls.Clear();
+            fetchPotTime = scenario.State.Fates?.FetchSharedTimeOnEntry ?? true; fetchPotTimeCalls.Clear();
+            potDebugCopies.Clear(); potDebugRetries = 0;
             string[] clicks = scenario.Name switch { "waymarks-button-check" => ["save", "place", "delete", "delete-confirm"],
                 "waymarks-off-island" => ["save", "place"], "waymarks-empty" => ["import"], "waymarks-combat" => ["place"], "waymarks-cancel-check" => ["cancel"],
                 "waymarks-import-check" => ["import-header", "json", "import"], _ => [] };
@@ -353,15 +476,31 @@ unsafe
             if (scenario.Name == "waymarks-distance-toggle") clicks = ["ignore-distance", "place", "ignore-distance"];
             if (scenario.Name == "waymarks-cancel-check") clicks = ["ignore-distance", "cancel"];
             if (scenario.Name == "auto-chests-toggle") clicks = ["auto-chest", "auto-chest"];
+            if (scenario.Name == "auto-patrol-toggle") clicks = ["auto-patrol", "auto-patrol"];
+            if (scenario.Name == "bocchi-route-switch") clicks = ["route", "Chart", "route", "Bocchi"];
+            if (scenario.Name == "bocchi-route-invalid") clicks = ["route", "Bocchi"];
+            if (scenario.Name == "carrot-route-switch") clicks = ["route", "Bocchi", "route", "Carrot"];
+            if (scenario.Name == "carrot-actions") clicks = ["sort", "flag-1", "reset", "confirm", "confirm-yes"];
+            if (scenario.Name == "carrot-stale-confirm") clicks = ["confirm", "confirm-yes"];
+            if (scenario.Name == "carrot-off-island") clicks = ["sort", "flag-1", "reset", "confirm"];
+            if (scenario.Name is "auto-patrol-off-island" or "auto-patrol-paused") clicks = ["auto-patrol"];
             if (scenario.Name == "phantom-jobs-actions") clicks = ["refresh-icons", "copy-1", "switch-0", "switch-1"];
             if (scenario.Name == "phantom-jobs-off-island") clicks = ["copy-1", "switch-1"];
             if (scenario.Name == "phantom-jobs-last") clicks = ["job-scroll", "copy-12", "switch-12"];
             if (scenario.Name == "ce-actions") clicks = ["boss-33", "trigger-flag", "boss-37", "trigger-flag", "boss-39", "trigger-flag",
                 "boss-41", "trigger-flag", "boss-42", "trigger-flag", "boss-44", "trigger-flag", "boss-34", "boss-flag"];
             if (scenario.Name is "ce-off-island" or "ce-north" or "ce-transit") clicks = ["trigger-flag", "boss-flag"];
-            if (scenario.Name.StartsWith("pot-overlay-options")) clicks = ["visible", "locked", "reset", "visible"];
-            if (scenario.Name.StartsWith("patrol-overlay-options")) clicks = ["visible", "locked", "locked", "reset", "visible"];
+            if (scenario.Name.StartsWith("pot-overlay-options")) clicks = ["visible", "visible"];
+            if (scenario.Name.StartsWith("patrol-overlay-options")) clicks = ["visible", "visible"];
+            if (scenario.Name.StartsWith("phantom-overlay-options") || scenario.Name == "phantom-jobs-overlay-options") clicks = ["phantom-overlay", "phantom-overlay"];
+            if (scenario.Name is "pot-time-sync-toggle" or "pot-time-sync-off-island") clicks = ["pot-time-sync", "pot-time-sync"];
+            if (scenario.Name.StartsWith("pot-debug")) clicks = scenario.Name == "pot-debug-collapse" ? ["header", "copy", "header"] : ["header", "copy"];
+            if (scenario.Name.StartsWith("pot-debug-retry") || scenario.Name == "pot-debug-off-island") clicks = ["header", "copy", "retry", "retry"];
             if (scenario.Name.StartsWith("chart-settings")) clicks = ["filters", "status"];
+            if (scenario.Name == "loot-minions") clicks = ["category", "category-Minion"];
+            if (scenario.Name == "loot-orchestrion") clicks = ["category", "category-Orchestrion"];
+            if (scenario.Name == "loot-category-reset") clicks = ["category", "category-Minion", "category", "category-all"];
+            if (scenario.Name is "loot-filter-combined" or "loot-filter-empty") clicks = ["category", "category-Minion", "only-bag", "only-garbage", "search"];
             CompassPage[] navigation = [CompassPage.Ce, CompassPage.Exploration, CompassPage.Settings, CompassPage.Fate, CompassPage.Pot, CompassPage.Waymarks, CompassPage.Patrol];
             for (var frame = 0; frame < (clicks.Length > 0 ? 3 + clicks.Length * 4 : scenario.Name.StartsWith("cards-navigation") ? 3 + navigation.Length * 4 : scenario.Name == "menu-navigation" ? 3 + navigation.Length * 7 : scenario.Name == "ce-zoomed" ? 15 : scenario.Name.StartsWith("ce-zoomed") || scenario.Name is "chart-zoomed" or "menu-ce-open" ? 7 : 3); frame++)
             {
@@ -381,11 +520,13 @@ unsafe
                 if (clicks.Length > 0 && frame >= 3)
                 {
                     var index = (frame - 3) / 4; var step = (frame - 3) % 4;
-                    if (step == 0) { var target = scenario.Name.StartsWith("chart-settings") ? view.PatrolSettingsTargets[clicks[index]] : scenario.Name.StartsWith("patrol-overlay-options") ? view.PatrolOverlayTargets[clicks[index]] : scenario.Name.StartsWith("pot-overlay-options") ? view.PotOverlayTargets[clicks[index]] : scenario.Name.StartsWith("ce-") ? view.CeTargets[clicks[index]] : clicks[index] == "auto-chest" ? view.AutoChestToggleTarget : scenario.Name.StartsWith("phantom-jobs") ? view.PhantomTargets[clicks[index] == "job-scroll" ? "copy-1" : clicks[index]] : view.WaymarkTargets[clicks[index]]; io.AddMousePosEvent(target.X, target.Y); }
+                    if (step == 0) { var target = scenario.Name.StartsWith("bocchi-route") || scenario.Name == "carrot-route-switch" ? view.PatrolRouteTargets[clicks[index]] : scenario.Name.StartsWith("carrot") ? view.CarrotTargets[clicks[index]] : scenario.Name.StartsWith("pot-debug") ? view.PotTimeDebugTargets[clicks[index]] : clicks[index] == "pot-time-sync" ? view.PotTimeSyncTarget : clicks[index] == "phantom-overlay" ? view.PhantomOverlayToggleTarget : clicks[index] == "auto-patrol" ? view.AutoPatrolTarget : scenario.Name.StartsWith("loot") ? view.LootTargets[clicks[index]] : scenario.Name.StartsWith("chart-settings") ? view.PatrolSettingsTargets[clicks[index]] : scenario.Name.StartsWith("patrol-overlay-options") ? view.PatrolOverlayTargets[clicks[index]] : scenario.Name.StartsWith("pot-overlay-options") ? view.PotOverlayTargets[clicks[index]] : scenario.Name.StartsWith("ce-") ? view.CeTargets[clicks[index]] : clicks[index] == "auto-chest" ? view.AutoChestToggleTarget : scenario.Name.StartsWith("phantom-jobs") ? view.PhantomTargets[clicks[index] == "job-scroll" ? "copy-1" : clicks[index]] : view.WaymarkTargets[clicks[index]]; io.AddMousePosEvent(target.X, target.Y); }
                     if (step == 1 && clicks[index] == "job-scroll") io.AddMouseWheelEvent(0, -30);
                     if (step == 1 && clicks[index] != "job-scroll") io.AddMouseButtonEvent(0, true);
                     if (step == 2 && clicks[index] != "job-scroll") io.AddMouseButtonEvent(0, false);
+                    if (step == 3 && scenario.Name.StartsWith("pot-debug") && index == clicks.Length - 1) io.AddMousePosEvent(-1000, -1000);
                     if (step == 3 && clicks[index] == "json") foreach (char ch in demoWaymark.Export()) io.AddInputCharacter(ch);
+                    if (step == 3 && clicks[index] == "search") foreach (char ch in scenario.Name == "loot-filter-empty" ? "48204" : "21057") io.AddInputCharacter(ch);
                 }
                 if (scenario.Name == "menu-navigation" && frame >= 3)
                 {
@@ -433,8 +574,16 @@ unsafe
                     ImGui.SetNextWindowSize(new Vector2(scenario.Width - 40, scenario.Height - 40));
                     if (ImGui.Begin($"新月島尋寶羅盤 · 示範資料##{scenario.Name}", ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse))
                     {
-                        var frameState = scenario.State with { PotOverlay = potOverlayOptions, PatrolOverlay = patrolOverlayOptions };
+                        var frameState = scenario.State with { PotOverlay = potOverlayOptions, PatrolOverlay = patrolOverlayOptions, PhantomOverlay = phantomOverlayOptions };
+                        if (scenario.Name == "carrot-stale-confirm" && frame >= 7) frameState = frameState with { Route = frameState.Route.Skip(1).ToArray() };
+                        if (frameState.Fates is { } potFates) frameState = frameState with { Fates = potFates with { FetchSharedTimeOnEntry = fetchPotTime } };
+                        if (potDebugRetries > 0 && frameState.Fates?.Debug is { } potDebug)
+                            frameState = frameState with { Fates = frameState.Fates with { Debug = potDebug with { CanRetry = false, RetryDetail = "查詢尚未完成，請等待結果。" } } };
                         if (autoChestSetting is { } autoSetting) frameState = frameState with { AutoOpenNearbyChests = autoSetting };
+                        if (selectedPatrolRoute is { } selectedRoute && frameState.Controls is { } controls)
+                            frameState = frameState with { Controls = controls with { RouteKind = selectedRoute } };
+                        if (autoPatrolSetting is { } patrolSetting && frameState.AutoPatrol is { } patrolState)
+                            frameState = frameState with { AutoPatrol = patrolState with { Enabled = patrolSetting } };
                         if (ignoreDistanceSetting is { } setting && frameState.Waymarks is { } markState)
                             frameState = frameState with { Waymarks = markState with { IgnoreDistance = setting } };
                         if (scenario.Name == "waymarks-select-new" && waymarkCalls.Contains("save"))
@@ -454,6 +603,18 @@ unsafe
             }
             if ((scenario.Name == "menu-navigation" || scenario.Name.StartsWith("cards-navigation")) && actionCount != beforeActions)
                 throw new InvalidOperationException("Changing feature pages must not change filters, routing, or tracking settings.");
+            if (scenario.Name.StartsWith("loot") && (actionCount != beforeActions || view.LootRows.Any(i => LootCleanup.IsExcluded(i.Id))))
+                throw new InvalidOperationException("Loot filters must not change cleanup rules or actions, and excluded items must remain absent.");
+            if (scenario.Name == "loot-minions" && (view.LootRows.Count != 44 || view.LootRows.Any(i => i.SearchCategory != 75)))
+                throw new InvalidOperationException("Selecting minions must show only the catalog's 44 minion items.");
+            if (scenario.Name == "loot-orchestrion" && (view.LootRows.Count != 7 || view.LootRows.Any(i => !i.EnglishName.EndsWith(" Orchestrion Roll"))))
+                throw new InvalidOperationException("Orchestrion selection must include all seven rolls, including unavailable future items.");
+            if (scenario.Name == "loot-category-reset" && view.LootRows.Count != 289)
+                throw new InvalidOperationException("Selecting All must restore the full cleanup catalog.");
+            if (scenario.Name == "loot-filter-combined" && !view.LootRows.Select(i => i.Id).SequenceEqual(new uint[] { 21057 }))
+                throw new InvalidOperationException("Category, inventory, garbage and ID search filters must work together.");
+            if (scenario.Name == "loot-filter-empty" && view.LootRows.Count != 0)
+                throw new InvalidOperationException("An orchestrion ID search within minions must show the empty state.");
             if (scenario.Name == "phantom-jobs-actions" && (phantomIconRefreshes != 1 || !phantomCopies.SequenceEqual(new[] { "/crescent job 1" }) || !phantomSwitchCalls.SequenceEqual(new byte[] { 1 })))
                 throw new InvalidOperationException("Copy must produce the selected macro; only a deliberate non-current switch may run.");
             if (scenario.Name == "phantom-jobs-off-island" && (!phantomCopies.SequenceEqual(new[] { "/crescent job 1" }) || phantomSwitchCalls.Count != 0))
@@ -462,6 +623,24 @@ unsafe
                 throw new InvalidOperationException("The last job must remain reachable by scrolling in a compact window.");
             if (scenario.Name == "auto-chests-toggle" && (!autoChestCalls.SequenceEqual(new[] { true, false }) || autoChestSetting != false))
                 throw new InvalidOperationException("Auto chest checkbox must enable and disable the persisted setting exactly once each.");
+            if (scenario.Name == "auto-patrol-toggle" && !autoPatrolCalls.SequenceEqual(new[] { true, false }))
+                throw new InvalidOperationException("Auto patrol must start and stop exactly once through the visible control.");
+            if (scenario.Name == "bocchi-route-switch" && (!patrolRouteCalls.SequenceEqual(new[] { PatrolRouteKind.Chart, PatrolRouteKind.Bocchi }) || autoPatrolCalls.Count != 0))
+                throw new InvalidOperationException("Route selection must dispatch both directions without starting movement.");
+            if (scenario.Name == "bocchi-route-invalid" && patrolRouteCalls.Count != 0)
+                throw new InvalidOperationException("Unavailable imported data cannot be selected as a route.");
+            if (scenario.Name.StartsWith("carrot") && view.CarrotRowsDrawn != 25)
+                throw new InvalidOperationException("Every carrot pad, including visited ones, must stay visible in weight records.");
+            if (scenario.Name == "carrot-route-switch" && !patrolRouteCalls.SequenceEqual(new[] { PatrolRouteKind.Bocchi, PatrolRouteKind.Carrot }))
+                throw new InvalidOperationException("Carrot route must be selectable independently of chest routes.");
+            if (scenario.Name == "carrot-actions" && (carrotResets != 1 || !carrotConfirmations.SequenceEqual(new[] { carrotState.Route[0].Spot.Id })))
+                throw new InvalidOperationException("Carrot manual confirmation must carry the chosen pad identity, and reset must dispatch once.");
+            if (scenario.Name is "carrot-stale-confirm" or "carrot-off-island" && (carrotResets != 0 || carrotConfirmations.Count != 0))
+                throw new InvalidOperationException("Off-island or changed-target confirmation must not change carrot weights.");
+            if (scenario.Name == "auto-patrol-off-island" && autoPatrolCalls.Count != 0)
+                throw new InvalidOperationException("Auto patrol start must remain disabled outside the supported island.");
+            if (scenario.Name == "auto-patrol-paused" && !autoPatrolCalls.SequenceEqual(new[] { false }))
+                throw new InvalidOperationException("Stopping auto patrol must remain available while the route is paused.");
             if (scenario.Name == "waymarks-button-check" && !waymarkCalls.SequenceEqual(new[] { "save", "place", "delete" }))
                 throw new InvalidOperationException("Waymark save/place and confirmed deletion must each dispatch once.");
             if (scenario.Name == "waymarks-select-new" && (!waymarkCalls.SequenceEqual(new[] { "save", "place", "place" }) || lastPlacedWaymark != demoWaymark.Id || view.SelectedWaymark != demoWaymark.Id))
@@ -491,10 +670,27 @@ unsafe
                 throw new InvalidOperationException("CE selection/coordinate clicks must flag each selected trigger or boss exactly once: " + string.Join(",", ceFlags));
             if (scenario.Name is "ce-off-island" or "ce-north" or "ce-transit" && ceFlags.Count != 0)
                 throw new InvalidOperationException("CE flag actions must be disabled outside South Horn or during loading.");
-            if (scenario.Name.StartsWith("pot-overlay-options") && !potOverlayCalls.SequenceEqual(new[] { "visible-True", "locked-False", "reset", "visible-False" }))
+            if (scenario.Name.StartsWith("pot-overlay-options") && !potOverlayCalls.SequenceEqual(new[] { "visible-True", "visible-False" }))
                 throw new InvalidOperationException("Pot overlay options must remain usable on and off the island: " + string.Join(",", potOverlayCalls));
-            if (scenario.Name.StartsWith("patrol-overlay-options") && (!patrolOverlayCalls.SequenceEqual(new[] { "visible-True", "locked-False", "locked-True", "reset", "visible-False" }) || potOverlayCalls.Count != 0))
+            if (scenario.Name.StartsWith("patrol-overlay-options") && (!patrolOverlayCalls.SequenceEqual(new[] { "visible-True", "visible-False" }) || potOverlayCalls.Count != 0))
                 throw new InvalidOperationException("Patrol overlay options must work independently of the pot overlay: " + string.Join(",", patrolOverlayCalls));
+            if (scenario.Name.StartsWith("pot-overlay") && view.PotOverlayTargets.Keys.Any(k => k is "locked" or "reset") ||
+                scenario.Name.StartsWith("patrol-overlay") && view.PatrolOverlayTargets.Keys.Any(k => k is "locked" or "reset"))
+                throw new InvalidOperationException("Overlay settings must not expose obsolete lock/reset controls.");
+            if (scenario.Name.StartsWith("general-fates") && view.FateAutoFlagShown != (scenario.State.GeneralFates?.AutoFlag ?? false))
+                throw new InvalidOperationException("FATE auto-flag defaults off and respects an explicitly saved setting.");
+            if ((scenario.Name.StartsWith("phantom-overlay-options") || scenario.Name == "phantom-jobs-overlay-options") &&
+                (!phantomOverlayCalls.SequenceEqual(new[] { true, false }) || potOverlayCalls.Count != 0 || patrolOverlayCalls.Count != 0))
+                throw new InvalidOperationException("Phantom overlay toggles work on both settings pages and outside the island without changing other overlays.");
+            if (scenario.Name is "pot-time-sync-toggle" or "pot-time-sync-off-island" &&
+                (!fetchPotTimeCalls.SequenceEqual(new[] { false, true }) || potOverlayCalls.Count != 0))
+                throw new InvalidOperationException("Entry-time query toggle must work independently on and off the island.");
+            if (scenario.Name.StartsWith("pot-debug") && (!potDebugCopies.SequenceEqual(new[] { scenario.State.Fates!.Debug!.Report }) ||
+                view.PotTimeDebugVisible != (scenario.Name != "pot-debug-collapse") || fetchPotTimeCalls.Count != 0 || actionCount != beforeActions))
+                throw new InvalidOperationException("Debug expansion and full report copy must not query, toggle settings or affect game actions.");
+            if (scenario.Name.StartsWith("pot-debug") && potDebugRetries !=
+                (scenario.Name.StartsWith("pot-debug-retry") && scenario.State.Fates!.Debug!.CanRetry ? 1 : 0))
+                throw new InvalidOperationException("Manual retry must dispatch once; disabled or in-flight retry clicks must do nothing.");
             var path = Path.Combine(output, $"{scenario.Name}.png");
             SoftwareRenderer.Render(ImGui.GetDrawData(), textures, scenario.Width, scenario.Height, path);
             Console.WriteLine($"Rendered {scenario.Name}: {scenario.Width}x{scenario.Height}, {ImGui.GetDrawData().TotalVtxCount} vertices -> {path}");

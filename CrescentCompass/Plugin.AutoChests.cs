@@ -19,14 +19,14 @@ public sealed partial class Plugin
         Conditions[ConditionFlag.Occupied30] || Conditions[ConditionFlag.Occupied33] || Conditions[ConditionFlag.Occupied38] ||
         Conditions[ConditionFlag.Occupied39] || Conditions[ConditionFlag.OccupiedInQuestEvent] || Conditions[ConditionFlag.TradeOpen] ||
         Conditions[ConditionFlag.OccupiedSummoningBell] || Conditions[ConditionFlag.Casting] || Conditions[ConditionFlag.Casting87] ||
-        Conditions[ConditionFlag.Jumping] || Conditions[ConditionFlag.CarryingObject] || Conditions[ConditionFlag.Mounting] || Conditions[ConditionFlag.Mounting71],
+        Conditions[ConditionFlag.CarryingObject] || Conditions[ConditionFlag.Mounting] || Conditions[ConditionFlag.Mounting71],
         Conditions[ConditionFlag.Mounted],
         Objects.LocalPlayer is not { IsDead: false, CurrentHp: > 0 }, IsPaused,
-        Conditions[ConditionFlag.InFlight], Conditions[ConditionFlag.RidingPillion]);
+        Conditions[ConditionFlag.InFlight], Conditions[ConditionFlag.RidingPillion], Conditions[ConditionFlag.Jumping]);
 
-    internal string AutoChestDetail => !Config.AutoOpenNearbyChests ? "關閉；勾選後自動開啟 2 公尺內的寶箱。" :
+    internal string AutoChestDetail => !AutoChestEnabled ? "關閉；勾選後自動開啟 2 公尺內的寶箱。" :
         autoChestFaulted ? "互動介面發生錯誤，已暫停；請查看 Dalamud 記錄，關閉再開啟可重試。" :
-        AutoChestContext.BlockReason is { Length: > 0 } reason ? reason : autoChestOpener.Detail;
+        AutoChestContext.GetBlockReason(allowCombat: autoPatrol.Enabled) is { Length: > 0 } reason ? reason : autoChestOpener.Detail;
 
     internal void SetAutoOpenNearbyChests(bool enabled)
     {
@@ -44,11 +44,14 @@ public sealed partial class Plugin
         if (autoChestFaulted) return;
         try
         {
-            autoChestOpener.Update(Config.AutoOpenNearbyChests, AutoChestContext, observations, Position, now, InteractWithChest);
+            var targets = !autoPatrol.Enabled && Config.AutoOpenNearbyChests ? observations : PatrolChest(observations) is { } chest ? new[] { chest } : [];
+            autoChestOpener.Update(AutoChestEnabled, AutoChestContext, targets, Position, now, InteractWithChest,
+                autoPatrol.Enabled ? AutoChestOpener.PatrolAttemptIntervalMs : AutoChestOpener.AttemptIntervalMs, allowCombat: autoPatrol.Enabled);
         }
         catch (Exception error)
         {
             autoChestFaulted = true;
+            if (autoPatrol.Enabled) { autoPatrol.Fail("自動開箱發生錯誤，已停止自動巡查。"); PauseRoute(); }
             Log.Error(error, "CrescentCompass auto chest interaction failed; paused until explicitly re-enabled");
         }
     }
@@ -56,7 +59,7 @@ public sealed partial class Plugin
     private unsafe bool InteractWithChest(Observation observation)
     {
         // Re-resolve the loaded object on the framework thread. Never hold native pointers between updates.
-        if (!Config.AutoOpenNearbyChests || AutoChestContext.BlockReason.Length != 0) return false;
+        if (!AutoChestEnabled || AutoChestContext.GetBlockReason(allowCombat: autoPatrol.Enabled).Length != 0) return false;
         var obj = Objects.SearchById(observation.ObjectId);
         if (obj is null || !obj.IsValid() || obj.Address == 0 || obj.IsDead || !obj.IsTargetable || obj.BaseId != observation.DataId ||
             Vector3.DistanceSquared(obj.Position, observation.Position) > 1 ||
@@ -76,10 +79,15 @@ public sealed partial class Plugin
                 if (item.ItemId != 0 && item.ChestObjectId == obj.EntityId) return false;
         }
         else return false;
+        var currentLoot = Loot.Instance();
+        if (currentLoot != null)
+            foreach (var item in currentLoot->Items)
+                if (item.ItemId != 0 && item.ChestObjectId == obj.GameObjectId) return false;
         var targetSystem = TargetSystem.Instance();
         if (targetSystem == null) throw new InvalidOperationException("TargetSystem 尚未就緒。");
         // Keep the game's line-of-sight and interaction checks. Its return value is not collection evidence.
         targetSystem->InteractWithObject((NativeGameObject*)obj.Address, true);
+        if (CarrotMode) carrotGathering.RecordBunnyInteraction(observation.ObjectId);
         return true;
     }
 }

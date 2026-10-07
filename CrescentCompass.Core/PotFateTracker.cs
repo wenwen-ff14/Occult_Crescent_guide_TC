@@ -9,10 +9,10 @@ public sealed record PotFateObservation(ushort Id, ushort Territory, PotFatePhas
 public sealed record PotFateLive(PotFateDefinition Definition, string Name, Vector3 Position, int Progress,
     bool Preparing, DateTimeOffset? EndsAt);
 public sealed record PotFateSnapshot(IReadOnlyList<PotFateLive> Active, PotFateDefinition? Next,
-    DateTimeOffset? ExpectedAt, bool UsesGameStart, bool ScanFresh);
+    DateTimeOffset? ExpectedAt, bool UsesGameStart, bool ScanFresh, bool IsSharedEstimate = false);
 public sealed record PotFateReminder(PotFateDefinition Definition, DateTimeOffset ExpectedAt);
 
-/// <summary>Local observations only. A 30-minute estimate never becomes evidence of a new spawn.</summary>
+/// <summary>Local observations with an optional entry-time seed. Estimates never prove a new spawn.</summary>
 public sealed class PotFateTracker
 {
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(30);
@@ -35,6 +35,8 @@ public sealed class PotFateTracker
         public bool Finished { get; set; }
     }
     private readonly Dictionary<ushort, Occurrence> latest = [];
+    private Occurrence? sharedAnchor;
+    public bool HasLocalAnchor => latest.Count > 0;
     private IReadOnlyList<PotFateLive> active = [];
     private DateTimeOffset? lastScan;
     private ushort territory;
@@ -43,7 +45,27 @@ public sealed class PotFateTracker
     public static PotFateDefinition? Find(ushort id, ushort territory) => Definitions.FirstOrDefault(d => d.Id == id && d.Territory == territory);
 
     public void Reset()
-    { latest.Clear(); active = []; lastScan = null; territory = 0; instance = 0; }
+    { latest.Clear(); sharedAnchor = null; active = []; lastScan = null; territory = 0; instance = 0; }
+
+    public bool TrySeedSharedTime(ushort expectedTerritory, uint expectedInstance, ushort fateId, long spawnUnix, DateTimeOffset now)
+    {
+        if (SharedTimeRejection(expectedTerritory, expectedInstance, fateId, spawnUnix, now) is not null) return false;
+        sharedAnchor = new(Find(fateId, territory)!, DateTimeOffset.FromUnixTimeSeconds(spawnUnix), true);
+        return true;
+    }
+
+    public string? SharedTimeRejection(ushort expectedTerritory, uint expectedInstance, ushort fateId, long spawnUnix, DateTimeOffset now)
+    {
+        var current = now.ToUnixTimeSeconds();
+        if (territory != expectedTerritory || instance != expectedInstance) return "計時器所在島嶼或分流已變更，拒絕舊場次回應。";
+        if (HasLocalAnchor) return "已有本機觀測，不以共享資料覆蓋。";
+        if (sharedAnchor is not null) return "本場已匯入共享時間，不重複匯入。";
+        if (Find(fateId, territory) is null) return $"回應 FATE {fateId} 不是本島的魔法罐。";
+        if (spawnUnix <= 0) return "回應開始時間無效（必須大於零）。";
+        if (spawnUnix > current) return "回應開始時間在本機時間的未來；請確認系統時鐘。";
+        if (spawnUnix <= current - (long)Interval.TotalSeconds) return "回應魔法罐紀錄已達 30 分鐘，剩餘時間已過期；不外推週期。";
+        return null;
+    }
 
     public IReadOnlyList<PotFateLive> Update(ushort currentTerritory, uint currentInstance,
         IEnumerable<PotFateObservation> observations, DateTimeOffset now, bool notify)
@@ -68,11 +90,14 @@ public sealed class PotFateTracker
             if (newRun)
             {
                 occurrence = new Occurrence(definition, start ?? now, start is not null);
+                occurrence.ReminderHandled = sharedAnchor is { ReminderHandled: true } shared &&
+                    shared.Definition.Id == definition.Id && start == shared.Start;
                 latest[observation.Id] = occurrence;
             }
             else if (start is { } corrected && !occurrence!.GameTime)
             { occurrence.Start = corrected; occurrence.GameTime = true; }
             occurrence!.Finished = !running;
+            sharedAnchor = null;
             if (!running) continue;
             var item = new PotFateLive(definition, string.IsNullOrWhiteSpace(observation.Name) ? definition.Name : observation.Name,
                 observation.Position, Math.Clamp(observation.Progress, 0, 100), observation.Phase == PotFatePhase.Preparation, ends);
@@ -89,17 +114,17 @@ public sealed class PotFateTracker
     public PotFateSnapshot Snapshot(DateTimeOffset now)
     {
         var fresh = lastScan is { } scanned && now >= scanned && now - scanned <= TimeSpan.FromSeconds(3);
-        var anchor = latest.Values.OrderByDescending(o => o.Start).FirstOrDefault();
+        var anchor = latest.Values.OrderByDescending(o => o.Start).FirstOrDefault() ?? sharedAnchor;
         return new(fresh ? active.Where(f => f.EndsAt is null || f.EndsAt > now).ToArray() : [],
             anchor is null ? null : Find(anchor.Definition.NextId, territory), anchor?.Start + Interval,
-            anchor?.GameTime == true, fresh);
+            anchor?.GameTime == true, fresh, anchor is not null && anchor == sharedAnchor);
     }
 
     /// <summary>Consume one reminder per observed cycle, including when muted; timestamp correction cannot replay it.</summary>
     public PotFateReminder? TakeUpcomingReminder(DateTimeOffset now, bool notify)
     {
         if (lastScan is not { } scanned || now < scanned || now - scanned > TimeSpan.FromSeconds(3)) return null;
-        var anchor = latest.Values.OrderByDescending(o => o.Start).FirstOrDefault();
+        var anchor = latest.Values.OrderByDescending(o => o.Start).FirstOrDefault() ?? sharedAnchor;
         if (anchor is null || anchor.ReminderHandled) return null;
         var expected = anchor.Start + Interval;
         var remaining = expected - now;

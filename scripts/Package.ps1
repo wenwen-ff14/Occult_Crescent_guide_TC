@@ -22,7 +22,7 @@ function Write-TaskArchive([string]$ArchivePath, [System.Collections.IDictionary
 }
 
 $taskRuntime = [ordered]@{}
-foreach ($taskName in @('CrescentCompass.dll','CrescentCompass.Core.dll','CrescentCompass.deps.json','CrescentCompass.json')) {
+foreach ($taskName in @('CrescentCompass.dll','CrescentCompass.Core.dll','CrescentCompass.deps.json','CrescentCompass.json','images/icon.png')) {
     $taskFile = Join-Path $taskOutput $taskName
     if (!(Test-Path -LiteralPath $taskFile)) { throw "Build Release before packaging: $taskFile" }
     $taskRuntime[$taskName] = $taskFile
@@ -43,6 +43,8 @@ $taskRuntime['docs/CE_COOLDOWNS.md'] = Join-Path $taskRoot 'docs/CE_COOLDOWNS.md
 $taskRuntime['docs/previews/ce-cooldowns.png'] = Join-Path $taskRoot 'docs/previews/ce-cooldowns.png'
 $taskRuntime['docs/previews/ce-zoomed.png'] = Join-Path $taskRoot 'docs/previews/ce-zoomed.png'
 $taskRuntime['docs/previews/pot-overlay-active.png'] = Join-Path $taskRoot 'docs/previews/pot-overlay-active.png'
+$taskRuntime['docs/previews/pot-time-sync-shared.png'] = Join-Path $taskRoot 'docs/previews/pot-time-sync-shared.png'
+$taskRuntime['docs/previews/pot-debug.png'] = Join-Path $taskRoot 'docs/previews/pot-debug.png'
 $taskRuntime['docs/PATROL_OVERLAY.md'] = Join-Path $taskRoot 'docs/PATROL_OVERLAY.md'
 $taskRuntime['docs/previews/patrol-overlay-both.png'] = Join-Path $taskRoot 'docs/previews/patrol-overlay-both.png'
 $taskRuntime['docs/previews/menu-settings.png'] = Join-Path $taskRoot 'docs/previews/menu-settings.png'
@@ -50,11 +52,16 @@ $taskRuntime['docs/previews/menu-ce-open.png'] = Join-Path $taskRoot 'docs/previ
 $taskRuntime['docs/FATE_AUTO_FLAGS.md'] = Join-Path $taskRoot 'docs/FATE_AUTO_FLAGS.md'
 $taskRuntime['docs/WAYMARKS.md'] = Join-Path $taskRoot 'docs/WAYMARKS.md'
 $taskRuntime['docs/AUTO_CHESTS.md'] = Join-Path $taskRoot 'docs/AUTO_CHESTS.md'
+$taskRuntime['docs/AUTO_PATROL.md'] = Join-Path $taskRoot 'docs/AUTO_PATROL.md'
+$taskRuntime['docs/CARROT_PATROL.md'] = Join-Path $taskRoot 'docs/CARROT_PATROL.md'
+$taskRuntime['docs/previews/carrot-route.png'] = Join-Path $taskRoot 'docs/previews/carrot-route.png'
+$taskRuntime['docs/previews/auto-patrol.png'] = Join-Path $taskRoot 'docs/previews/auto-patrol.png'
 $taskRuntime['docs/LOOT_CLEANUP.md'] = Join-Path $taskRoot 'docs/LOOT_CLEANUP.md'
 $taskRuntime['docs/PLAYER_VISIBILITY.md'] = Join-Path $taskRoot 'docs/PLAYER_VISIBILITY.md'
 $taskRuntime['docs/PHANTOM_JOBS.md'] = Join-Path $taskRoot 'docs/PHANTOM_JOBS.md'
 $taskRuntime['docs/audit/phantom-macro-icons.txt'] = Join-Path $taskRoot 'docs/audit/phantom-macro-icons.txt'
 $taskRuntime['docs/previews/phantom-jobs.png'] = Join-Path $taskRoot 'docs/previews/phantom-jobs.png'
+$taskRuntime['docs/previews/phantom-overlay.png'] = Join-Path $taskRoot 'docs/previews/phantom-overlay.png'
 $taskRuntime['docs/WAYMARK_PREVIEW.md'] = Join-Path $taskRoot 'docs/WAYMARK_PREVIEW.md'
 foreach ($taskNumber in 1..4) {
     $taskName = "docs/previews/waymarks-preview-$taskNumber.png"

@@ -16,6 +16,7 @@ public sealed class RouteAutomation
     private string? inspectedId;
     private long? missingSince;
     private long? lastScan;
+    private int consecutiveScans;
     private string? pendingFlag;
     private long? lastFlagAttempt;
     private int flagAttempts;
@@ -26,20 +27,20 @@ public sealed class RouteAutomation
         private set => detail = value;
     }
 
-    public void ResetInspection() { inspectedId = null; missingSince = null; lastScan = null; }
+    public void ResetInspection() { inspectedId = null; missingSince = null; lastScan = null; consecutiveScans = 0; }
     public void CancelFlag() { pendingFlag = null; lastFlagAttempt = null; flagAttempts = 0; }
     public void Reset() { ResetInspection(); CancelFlag(); Detail = "先規劃路線，再開始自動巡查。"; }
     public static float NormalizeRadius(float radius) => float.IsFinite(radius) ? Math.Clamp(radius, 20, 100) : CheckRadius;
 
     public RouteUpdate Update(SurveySession session, List<Spot> remaining, IReadOnlyList<Observation> observations,
         Vector3 player, long now, PointDisplayMode mode, bool enabled, bool canCheckAbsence = true, float radius = CheckRadius,
-        string? absenceBlockReason = null, bool preservePlannedStops = false)
+        string? absenceBlockReason = null, bool preservePlannedStops = false, long emptyWaitMs = EmptyWaitMs)
     {
         if (Paused) { Reset(); Detail = "巡查已暫停；保留目前站點。"; return new(RouteAdvanceReason.None, 0); }
         var head = remaining.FirstOrDefault();
         var tracked = head is null ? null : session.Get(head.Id);
         var reason = RouteAdvanceReason.None;
-        if (enabled) reason = Inspect(tracked, observations, player, now, canCheckAbsence, radius, absenceBlockReason);
+        if (enabled) reason = Inspect(tracked, observations, player, now, canCheckAbsence, radius, absenceBlockReason, emptyWaitMs);
         else { Reset(); Detail = "自動下一站已關閉。"; }
         if (reason == RouteAdvanceReason.Empty) session.Skip(head!.Id);
 
@@ -63,7 +64,7 @@ public sealed class RouteAutomation
         Vector2.DistanceSquared(new(player.X, player.Z), new(spot.Position.X, spot.Position.Z)) <= MathF.Pow(NormalizeRadius(radius), 2);
 
     public RouteAdvanceReason Inspect(TrackedSpot? target, IReadOnlyList<Observation> observations, Vector3 player, long now, bool canCheckAbsence = true, float radius = CheckRadius,
-        string? absenceBlockReason = null)
+        string? absenceBlockReason = null, long emptyWaitMs = EmptyWaitMs)
     {
         if (target is null) return Wait("目前沒有路線站點；請先規劃或重新巡查。");
         if (!CofferKinds.IsCoffer(target.Spot.Kind)) return Wait("目前站是蘿蔔或探索地點，請手動完成巡查。");
@@ -73,6 +74,7 @@ public sealed class RouteAutomation
         if (!canCheckAbsence) return Wait("互動、讀條或過場中，暫停空點確認。");
         if (!Coordinates.IsFinite(player)) return Wait("等待有效玩家位置。");
         radius = NormalizeRadius(radius);
+        emptyWaitMs = Math.Clamp(emptyWaitMs, PatrolEmptyCheck.ConfirmationMs, EmptyWaitMs);
         var distance = Vector2.Distance(new(player.X, player.Z), new(target.Spot.Position.X, target.Spot.Position.Z));
         var height = MathF.Abs(player.Y - target.Spot.Position.Y);
         if (!IsNear(target.Spot, player, radius)) return Wait($"距目標 {distance:F0} m／判定 {radius:F0} m，高差 {height:F1} m／上限 {MaxHeightDifference:F0} m。");
@@ -84,19 +86,21 @@ public sealed class RouteAutomation
         // Untargetable placeholders can remain loaded for chests this player cannot use.
         // Only a usable or opening coffer blocks the timer; lack of usability is never called collection.
         // Only consecutive successful scans count. A stall, exception, cutscene or reset restarts the grace period.
-        if (lastScan is not { } previous || now <= previous || now - previous > 3000) missingSince = now;
+        if (lastScan is not { } previous || now <= previous || now - previous > emptyWaitMs)
+        { missingSince = now; consecutiveScans = 0; }
         missingSince ??= now;
         lastScan = now;
+        consecutiveScans++;
         var elapsed = now - missingSince.Value;
-        Detail = $"{(nearby.Length > 0 ? "箱體持續不可選取" : "未偵測到可用寶箱")} · 確認 {Math.Min(elapsed / 1000f, 3):F1} / 3.0 秒";
-        if (elapsed < EmptyWaitMs) return RouteAdvanceReason.None;
+        Detail = $"{(nearby.Length > 0 ? "箱體持續不可選取" : "未偵測到可用寶箱")} · 確認 {Math.Min(elapsed, emptyWaitMs) / 1000f:F1} / {emptyWaitMs / 1000f:F1} 秒";
+        if (elapsed < emptyWaitMs || emptyWaitMs == PatrolEmptyCheck.ConfirmationMs && consecutiveScans < 3) return RouteAdvanceReason.None;
         ResetInspection();
-        Detail = "連續 3 秒沒有可用寶箱，已略過並切換下一站。";
+        Detail = $"連續 {emptyWaitMs / 1000f:F1} 秒沒有可用寶箱，已略過並切換下一站。";
         return RouteAdvanceReason.Empty;
     }
 
     private RouteAdvanceReason Wait(string detail)
-    { missingSince = null; lastScan = null; Detail = detail; return RouteAdvanceReason.None; }
+    { missingSince = null; lastScan = null; consecutiveScans = 0; Detail = detail; return RouteAdvanceReason.None; }
 
     public void ScheduleFlag(string id) { CancelFlag(); pendingFlag = id; }
     public bool CanAttemptFlag(string? currentHeadId, long now)

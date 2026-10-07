@@ -3008,31 +3008,6 @@
     "SearchCategory": 0
   },
   {
-    "Id": 47866,
-    "Name": "妖金絲",
-    "EnglishName": "Aetherspun Gold",
-    "Sources": [
-      "South Horn / Bunny Gold",
-      "South Horn / Pot Gold",
-      "South Horn / Treasure Bronze",
-      "South Horn / Treasure Silver"
-    ],
-    "Available": true,
-    "PriceLow": 0,
-    "SearchCategory": 0
-  },
-  {
-    "Id": 47868,
-    "Name": "力之魔石",
-    "EnglishName": "Sanguinite",
-    "Sources": [
-      "South Horn / Forked Tower Blood"
-    ],
-    "Available": true,
-    "PriceLow": 0,
-    "SearchCategory": 0
-  },
-  {
     "Id": 47970,
     "Name": "零錢龜",
     "EnglishName": "Tipping Tortoise",
@@ -3094,28 +3069,6 @@
     "Available": true,
     "PriceLow": 0,
     "SearchCategory": 0
-  },
-  {
-    "Id": 48096,
-    "Name": "幸運胡蘿蔔",
-    "EnglishName": "Fortune Carrot",
-    "Sources": [
-      "North Horn / Bunny Gold",
-      "North Horn / Pot Bronze",
-      "North Horn / Pot Gold",
-      "North Horn / Pot Silver",
-      "North Horn / Treasure Bronze",
-      "North Horn / Treasure Silver",
-      "South Horn / Bunny Gold",
-      "South Horn / Pot Bronze",
-      "South Horn / Pot Gold",
-      "South Horn / Pot Silver",
-      "South Horn / Treasure Bronze",
-      "South Horn / Treasure Silver"
-    ],
-    "Available": true,
-    "PriceLow": 4,
-    "SearchCategory": 60
   },
   {
     "Id": 48140,

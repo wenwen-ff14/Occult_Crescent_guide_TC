@@ -24,6 +24,7 @@ internal sealed partial class CompassView
         if (ImGui.Checkbox("場景位置提示與下一站標示", ref hints)) actions.SetWorldHints(hints);
         DrawPotOverlayControls(state, actions);
         DrawPatrolOverlayControls(state, actions);
+        DrawPhantomOverlayControl(state, actions);
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         ImGui.TextColored(Mint, "巡查紀錄");
         ImGui.BeginDisabled(!state.Active);
@@ -36,8 +37,10 @@ internal sealed partial class CompassView
         ImGui.TextWrapped("探索筆記限島上 12 處，排除塔內避世書庫。未探索篩選依目前角色的遊戲完成狀態；「已巡查」另記本輪手動進度，清除巡查不會重設遊戲紀錄。");
         ImGui.TextWrapped("自動略過代表範圍內連續沒有可用寶箱，不當作已開箱。重新巡查保留紀錄並優先續巡；清除紀錄才會重跑。略過位置重新出現可再規劃。");
         ImGui.TextWrapped(state.Region.Contains("北") ? "北區點位取自公開資料；本機繁中客戶端無此區域，尚未完成遊戲資料核對。" : "南區野外 68／68 點已與繁中場景核對；塔內另有 14 點。魔法罐候選資料未經伺服器完整性驗證。");
-        ImGui.TextWrapped("巡查固定依南部 1～68 編號順序，vnavmesh 計算站間走法；開箱或確認近距離空點後自動標記下一站。同島同分流傳送與手動暫停會保留路線，落地後從目前位置接續。未計入敵人、機關、解鎖與傳送時間。");
-        if (state.TotalStops > 0) ImGui.TextColored(Muted, $"已取得路段合計 {state.PlannedDistance:F0} m · {(state.Controls?.ChartMode == true ? "圖表固定順序" : state.Exact ? "此距離模型下最短順序" : "近似最佳化順序")}");
+        ImGui.TextWrapped("南部 68 點可選 BOCCHI 分區順序或原圖表順序，vnavmesh 計算站間走法；箱點編號與紀錄共用。同島同分流傳送與手動暫停會保留路線。BOCCHI 距離僅為上游已知路段參考，不作可通行或空點證據；跨區段仍步行。");
+        if (state.TotalStops > 0) ImGui.TextColored(Muted, state.AutoPatrol?.Enabled == true && state.PlannedDistance == 0
+            ? "固定巡查順序 · 路段逐步準備中"
+            : $"已取得路段合計 {state.PlannedDistance:F0} m · {(state.Controls?.ChartMode == true ? "固定巡查順序" : state.Exact ? "此距離模型下最短順序" : "近似最佳化順序")}");
     }
 
     internal Vector2 AutoChestToggleTarget { get; private set; }

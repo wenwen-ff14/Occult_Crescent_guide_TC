@@ -10,7 +10,8 @@ internal enum CompassPage { Patrol, Pot, Ce, Exploration, Settings, Fate, Waymar
 internal sealed partial class CompassView
 {
     internal CompassPage Page { get; set; }
-    private bool ceRecordedOnly;
+    private bool ceUnseenOnly;
+    internal bool CeUnseenOnly => ceUnseenOnly;
     internal IReadOnlyList<(CompassPage Page, Vector2 Center)> MenuTargets => menuTargets;
     private readonly List<(CompassPage Page, Vector2 Center)> menuTargets = [];
     internal Dictionary<CompassPage, Vector2> MenuItemTargets { get; } = [];
@@ -72,6 +73,8 @@ internal sealed partial class CompassView
                     break;
                 case CompassPage.Settings:
                     if (ImGui.MenuItem("幻影職業／巨集", "/crescent jobs")) { Page = CompassPage.Settings; ShowPhantomJobs = true; }
+                    if (ImGui.MenuItem("在畫面顯示幻影職業", "", state.PhantomOverlay?.Enabled == true, actions.PhantomOverlay is not null))
+                        actions.PhantomOverlay?.SetVisible(state.PhantomOverlay?.Enabled != true);
                     if (ImGui.MenuItem("場景位置提示", "", state.WorldHints)) actions.SetWorldHints(!state.WorldHints);
                     if (ImGui.MenuItem("隱藏其他玩家（保留倒地者）", "", state.HideOtherPlayers)) actions.SetHideOtherPlayers?.Invoke(!state.HideOtherPlayers);
                     break;
@@ -102,15 +105,17 @@ internal sealed partial class CompassView
         var rows = snapshot.Entries.Select(e => (!state.Active || !enabled || !snapshot.ScanFresh) &&
             e.Status is CeStatus.Register or CeStatus.Warmup or CeStatus.Battle or CeStatus.ConfirmingEnd
             ? e with { Status = CeStatus.EndUnobserved } : e).ToArray();
-        ImGui.Checkbox("只顯示已觀測的 CE", ref ceRecordedOnly);
+        ImGui.Checkbox("只顯示尚未出現的 CE", ref ceUnseenOnly);
+        CeTargets["unseen"] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        HoverHint("依本次分流的觀測紀錄，僅保留尚未看過出現的 CE；未觀測不代表伺服器從未刷新。\n已觀測的 CE 即使冷卻到期也不列入；換分流或清除紀錄後重新累計。");
         ImGui.SameLine();
         if (ImGui.SmallButton("全圖")) ceMapReady = false;
-        ImGui.SameLine(); ImGui.TextColored(Muted, "Ctrl＋滾輪縮放 · 右鍵拖曳");
-        DrawCeSelection(state, actions, rows, now);
-        ImGui.TextColored(Muted, "點選 BOSS 查看觸發條件 · 點座標插旗");
-        var shown = rows.Where(e => !ceRecordedOnly || e.LastSeen is not null).ToArray();
+        HoverHint("回到全圖。Ctrl＋滾輪縮放，滑鼠左／右／中鍵拖曳地圖。點選 BOSS 查看觸發條件，點座標插旗。");
+        var shown = rows.Where(e => !ceUnseenOnly || e.LastSeen is null).ToArray();
+        if (!shown.Any(e => e.Definition.Id == selectedCe)) selectedCe = shown.FirstOrDefault()?.Definition.Id ?? 0;
+        DrawCeSelection(state, actions, shown, now);
+        if (shown.Length == 0) ImGui.TextColored(Muted, "本次分流的 CE 均已有出現紀錄。");
         DrawCeMap(state, actions, shown, now);
-        if (shown.Length == 0) ImGui.TextColored(Muted, "本場尚無已觀測的 CE，可取消篩選查看所有位置。");
         if (state.Message.StartsWith("CE 旗標：", StringComparison.Ordinal)) ImGui.TextWrapped(state.Message);
     }
     internal static string CeLabel(CeCooldownEntry row, DateTimeOffset now) => row.Status switch

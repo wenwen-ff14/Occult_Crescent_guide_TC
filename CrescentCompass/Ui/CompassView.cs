@@ -61,6 +61,8 @@ internal sealed partial class CompassView
             {
                 case CompassPage.Loot: DrawLoot(state, actions); break;
                 case CompassPage.Patrol:
+                    DrawAutoPatrolControl(state, actions);
+                    DrawCarrotWeights(state, actions);
                     DrawPatrolOverlayControls(state, actions);
                     DrawStats(state);
                     if (state.Active) DrawJourney(state, actions);
@@ -76,6 +78,7 @@ internal sealed partial class CompassView
                     break;
                 case CompassPage.Pot:
                     DrawPotOverlayControls(state, actions);
+                    DrawPotTimeSyncControl(state, actions);
                     if (state.Active)
                     {
                         DrawFates(state, actions); DrawPot(state, actions);
@@ -170,6 +173,7 @@ internal sealed partial class CompassView
 
     private void DrawFilters(CompassViewState state, CompassActions actions)
     {
+        var carrots = state.Controls?.RouteKind == PatrolRouteKind.Carrot;
         var filters = state.Filters;
         if (PatrolDetails("其他地點與顯示篩選", "filters", state))
         {
@@ -183,13 +187,14 @@ internal sealed partial class CompassView
         HoverHint("包含南區 14 個 BA_treasure 場景候選點。塔內有樓層與機關限制，需自行確認可達性。");
         if (filters.Exploration) ImGui.TextColored(KindColor(SpotKind.Exploration), "已顯示島上探索筆記 · 可至「探索筆記」選單調整");
         ImGui.TextColored(Muted, "全島已知位置 · 保留本場曾見目標");
-        HoverHint("本場曾偵測為可選取且未記為已巡查的物件，離開視野仍保留；不代表目前可開的所有寶箱。\n地點篩選只影響清單與場景提示，南部 68 點巡查仍依編號進行。探索筆記有獨立的未探索篩選。");
+        HoverHint("本場曾偵測且未記為已巡查的目標，離開視野仍保留；不代表目前可開的所有寶箱。\n地點篩選只影響清單與場景提示，不會改變固定巡查順序。探索筆記有獨立的未探索篩選。");
         if (filters.Exploration && state.Active && state.Region.Contains("北")) ImGui.TextWrapped("北部探索地點尚未由本機繁中資料核對，本版不提供推測位置。");
         if (filters != state.Filters) actions.SetFilters(filters);
         }
         DrawAutoChestControl(state, actions);
         ImGui.TextColored(Muted, "開箱或確認近距離空點後，自動標記下一站");
-        HoverHint("確認開箱後插下一旗；水平與步行路程都在 60 公尺內、高差不超過 8 公尺，連續 3 秒沒有可用箱則略過。導航未就緒或仍需繞路時等待。\n互動、讀條、過場、手動暫停與魔法罐尋寶時暫停換旗。");
+        HoverHint(carrots ? "確認蘿蔔與兔子寶箱處理後換旗；三維距離與地面路程都在 6 公尺內，連續 1.5 秒未見蘿蔔或兔子寶箱，才將空點權重歸零並略過。"
+            : "確認開箱後插下一旗；水平與步行路程都在 60 公尺內、高差不超過 8 公尺，連續 3 秒沒有可用箱則略過。導航未就緒或仍需繞路時等待。\n互動、讀條、過場、手動暫停與魔法罐尋寶時暫停換旗。");
         if (PatrolDetails("巡查與地形狀態", "status", state))
         {
         ImGui.TextWrapped($"自動巡查：{state.AutomationDetail}");
@@ -201,8 +206,9 @@ internal sealed partial class CompassView
         ImGui.BeginDisabled(state.Controls?.ChartMode == true && !state.Region.Contains("南"));
         if (PrimaryButton(state.Controls?.ChartMode == true ? $"從 #{state.Controls.StartNumber:00} 開始" : state.TotalStops > 0 ? "重新規劃路線" : "規劃巡查路線", new Vector2(U(158), U(34)))) actions.Plan();
         ImGui.SameLine(); if (ImGui.Button("重新巡查", new Vector2(U(106), U(34)))) actions.Restart();
-        HoverHint("保留本場已巡查與略過記錄，從上輪未完成的首點接續，維持南部 68 點編號順序。若要全部重跑，使用「設定」選單中的清除紀錄。");
-        ImGui.EndDisabled(); ImGui.EndDisabled(); ImGui.SameLine(); ImGui.AlignTextToFramePadding(); ImGui.TextColored(Muted, state.Controls?.ChartMode == true ? "保留已巡查紀錄" : "從目前位置出發");
+        HoverHint(carrots ? "從目前未完成的首點重新巡查全部 25 點；保留搜尋權重，不影響寶箱巡查紀錄。"
+            : "保留本場已巡查與略過記錄，從上輪未完成的首點接續，維持目前選用的南部 68 點順序。若要全部重跑，使用「設定」選單中的清除紀錄。");
+        ImGui.EndDisabled(); ImGui.EndDisabled(); ImGui.SameLine(); ImGui.AlignTextToFramePadding(); ImGui.TextColored(Muted, carrots ? "保留搜尋權重" : state.Controls?.ChartMode == true ? "保留已巡查紀錄" : "從目前位置出發");
     }
 
     private bool PatrolDetails(string label, string key, CompassViewState state)

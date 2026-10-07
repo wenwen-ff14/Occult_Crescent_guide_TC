@@ -105,7 +105,7 @@ foreach (var item in supplement.RootElement.EnumerateArray())
     if (source == "North Horn / Forked Tower Magic") set.Add("North Horn / Forked Tower Magic Extreme");
     extraNames[id] = item.GetProperty("EnglishName").GetString()!;
 }
-var rows = sources.Select(pair => {
+var rows = sources.Where(pair => !CrescentCompass.Core.LootCleanup.IsExcluded(pair.Key)).Select(pair => {
     var found = sheet.TryGetRow(pair.Key, out var row) && !string.IsNullOrWhiteSpace(row.Name.ToString());
     var en = names.RootElement.TryGetProperty(pair.Key.ToString(), out var n) ? n.GetProperty("En").GetString()! : extraNames.GetValueOrDefault(pair.Key, $"Item {pair.Key}");
     return new { Id = pair.Key, Name = found ? row.Name.ToString() : en, EnglishName = en, Sources = pair.Value.Order().ToArray(), Available = found, PriceLow = found ? row.PriceLow : 0, SearchCategory = found ? row.ItemSearchCategory.RowId : 0 };

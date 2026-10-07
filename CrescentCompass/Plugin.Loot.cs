@@ -37,12 +37,14 @@ public sealed partial class Plugin
     private void InitializeLoot()
     {
         Config.GarbageItemIds ??= [];
+        if (Config.GarbageItemIds.RemoveWhere(LootCleanup.IsExcluded) > 0) PluginInterface.SavePluginConfig(Config);
         if (!Enum.IsDefined(Config.LootMode)) Config.LootMode = LootCleanupMode.Discard;
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("CrescentCompass.Data.loot_catalog.json")!;
         lootItems = LootCleanup.Load(stream).Select(item =>
         {
             var found = Data.GetExcelSheet<Item>().TryGetRow(item.Id, out var row) && !string.IsNullOrWhiteSpace(row.Name.ToString());
-            return item with { Available = found, Name = found ? row.Name.ToString() : item.EnglishName, PriceLow = found ? row.PriceLow : 0 };
+            return item with { Available = found, Name = found ? row.Name.ToString() : item.EnglishName,
+                PriceLow = found ? row.PriceLow : 0, SearchCategory = found ? row.ItemSearchCategory.RowId : item.SearchCategory };
         }).ToArray();
         lootById = lootItems.ToDictionary(i => i.Id);
     }

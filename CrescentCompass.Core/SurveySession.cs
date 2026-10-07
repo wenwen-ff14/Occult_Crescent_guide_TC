@@ -62,7 +62,7 @@ public sealed class SurveySession
             }
             objectIds[match.Id] = observation.ObjectId;
             lastSeen[match.Id] = now;
-            if (observation.Available && observation.Targetable)
+            if (observation.Available && (observation.Targetable || observation.Kind == SpotKind.Carrot))
             {
                 nextVisible.Add(match.Id); observedTargets.Add(match.Id);
                 if (skipped.Remove(match.Id)) Revision++;
@@ -105,7 +105,13 @@ public sealed class SurveySession
         Revision++;
         return true;
     }
-    public void Skip(string id) { if (spots.TryGetValue(id, out var spot) && CofferKinds.IsCoffer(spot.Kind) && !visited.Contains(id) && skipped.Add(id)) Revision++; }
+    public void Skip(string id) { if (spots.TryGetValue(id, out var spot) && (CofferKinds.IsCoffer(spot.Kind) || spot.Kind == SpotKind.Carrot) && !visited.Contains(id) && skipped.Add(id)) Revision++; }
     // A new patrol can revisit manually completed/empty pads, but never re-advertises a confirmed opened chest.
     public void RestartSurvey() { visited.IntersectWith(spent); skipped.Clear(); Revision++; }
+    public void RestartCarrots()
+    {
+        foreach (var spot in spots.Values.Where(s => s.Kind == SpotKind.Carrot))
+        { visited.Remove(spot.Id); skipped.Remove(spot.Id); spent.Remove(spot.Id); }
+        Revision++;
+    }
 }

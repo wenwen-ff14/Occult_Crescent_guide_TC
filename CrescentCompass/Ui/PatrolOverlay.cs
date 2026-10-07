@@ -24,18 +24,17 @@ internal sealed class PatrolOverlay
     internal Vector2 Size { get; private set; }
     internal Dictionary<string, Vector2> ButtonTargets { get; } = [];
 
-    internal void Draw(CompassPatrolOverlayState? state, bool visible, bool locked,
+    internal void Draw(CompassPatrolOverlayState? state, bool visible,
         Vector2 savedPosition, Action<Vector2> savePosition, CompassPatrolOverlayCommands commands)
     {
         Drawn = false;
         ButtonTargets.Clear();
         if (!visible || state is not { HasPatrol: true }) { dragging = null; return; }
-        if (locked) dragging = null;
         var scale = ImGui.GetFontSize() / 17f;
         var viewport = ImGui.GetMainViewport();
         var width = Math.Min(400 * scale, viewport.Size.X);
         var textWidth = Math.Max(1, width - 28 * scale);
-        var detail = locked ? state.Detail : "拖曳浮窗標題移動，放開保存；按鈕可直接操作。";
+        var detail = state.Detail;
         var height = 150 * scale + ImGui.CalcTextSize(state.Target, false, textWidth).Y +
             ImGui.CalcTextSize(state.Coordinates, false, textWidth).Y + ImGui.CalcTextSize(detail, false, textWidth).Y;
         Size = new(width, height);
@@ -66,15 +65,12 @@ internal sealed class PatrolOverlay
         {
             Drawn = true;
             var draw = ImGui.GetWindowDrawList(); var start = ImGui.GetCursorScreenPos();
-            if (!locked)
-            {
-                ImGui.InvisibleButton("patrol-overlay-drag", new Vector2(ImGui.GetContentRegionAvail().X, 23 * scale));
-                DragTarget = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
-                if (ImGui.IsItemHovered() || ImGui.IsItemActive()) ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
-                if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left, 0))
-                    dragging = offset + ImGui.GetIO().MouseDelta;
-                ImGui.SetCursorScreenPos(start);
-            }
+            ImGui.InvisibleButton("patrol-overlay-drag", new Vector2(ImGui.GetContentRegionAvail().X, 23 * scale));
+            DragTarget = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+            if (ImGui.IsItemHovered() || ImGui.IsItemActive()) ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
+            if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                dragging = offset + ImGui.GetIO().MouseDelta;
+            ImGui.SetCursorScreenPos(start);
             draw.AddText(start, Pack(state.Waiting ? Gold : Mint), $"巡查進度 · {state.Status}");
             ImGui.Dummy(new Vector2(0, 23 * scale));
             ImGui.TextWrapped(state.Target);
@@ -107,7 +103,7 @@ internal sealed class PatrolOverlay
         }
         ImGui.End();
         ImGui.PopStyleVar(5); ImGui.PopStyleColor(8);
-        if (!locked && dragging is { } moved && !ImGui.IsMouseDown(ImGuiMouseButton.Left))
+        if (dragging is { } moved && !ImGui.IsMouseDown(ImGuiMouseButton.Left))
         {
             savePosition(Vector2.Clamp(moved, Vector2.Zero, maximum));
             dragging = null;

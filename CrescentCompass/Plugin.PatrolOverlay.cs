@@ -18,7 +18,7 @@ public sealed partial class Plugin
             !Conditions[ConditionFlag.OccupiedInCutSceneEvent] &&
             HasPatrolOverlayRoute;
         patrolOverlayCommands ??= new(AdvanceFromPatrolOverlay, PauseFromPatrolOverlay, ResumeFromPatrolOverlay, StopFromPatrolOverlay);
-        patrolOverlay.Draw(visible ? PatrolOverlayState() : null, visible, Config.LockPatrolOverlay,
+        patrolOverlay.Draw(visible ? PatrolOverlayState() : null, visible,
             new(Config.PatrolOverlayX, Config.PatrolOverlayY), SavePatrolOverlayPosition, patrolOverlayCommands);
     }
 
@@ -32,12 +32,12 @@ public sealed partial class Plugin
         var finished = total > 0 && completed + skipped >= total && next is null;
         var waiting = IsPaused || IsPlanning || EventNavigationActive;
         var status = IsPaused ? "已暫停" : PotNavigationActive ? "魔法罐優先" : FateNavigationActive ? "FATE 優先" :
-            IsPlanning ? "規劃路線中" : next is not null ? "巡查中" : finished ? "本輪巡查結束" : total > 0 ? "等待可用站點" : "尚未開始";
-        var target = next is null ? "目前沒有下一站" : $"{(waiting ? "保留站點" : "下一站")} {(ChestChart.Number(next) is { } number ? $"#{number:00} · " : "")}{CompassView.KindName(next.Kind)}";
+            IsPlanning ? "規劃路線中" : autoPatrol.Enabled ? "自動巡查" : next is not null ? "巡查中" : finished ? "本輪巡查結束" : total > 0 ? "等待可用站點" : "尚未開始";
+        var target = next is null ? "目前沒有下一站" : $"{(waiting ? "保留站點" : "下一站")} {((CarrotRoute.Number(next) ?? ChestChart.Number(next)) is { } number ? $"#{number:00} · " : "")}{CompassView.KindName(next.Kind)}";
         var distance = next is null ? float.NaN : Vector3.Distance(Position, next.Position);
         var coordinates = next is null ? IsPlanning ? "等待路線計算完成。" : "在巡查頁選擇起點或規劃路線。" :
             $"{MapPosition(next)}{(float.IsFinite(distance) ? $" · 直線 {distance:F0} m" : "")}";
-        var detail = next is not null || waiting ? AutomationDetail : finished ? "可在巡查頁開始下一輪；巡查紀錄保留。" :
+        var detail = autoPatrol.Enabled || autoPatrol.Faulted ? autoPatrol.Detail : next is not null || waiting ? AutomationDetail : finished ? "可在巡查頁開始下一輪；巡查紀錄保留。" :
             "啟動巡查後自動更新；關閉主介面也會顯示。";
         return new(status, target, coordinates, completed, skipped, Remaining.Count, total, detail, waiting, IsPaused, IsPlanning, IsOccupied);
     }
@@ -69,14 +69,6 @@ public sealed partial class Plugin
         Config.ShowPatrolOverlay = enabled;
         PluginInterface.SavePluginConfig(Config);
     }
-
-    internal void SetPatrolOverlayLocked(bool locked)
-    {
-        Config.LockPatrolOverlay = locked;
-        PluginInterface.SavePluginConfig(Config);
-    }
-
-    internal void ResetPatrolOverlayPosition() => SavePatrolOverlayPosition(new(24, 320));
 
     private void SavePatrolOverlayPosition(Vector2 position)
     {

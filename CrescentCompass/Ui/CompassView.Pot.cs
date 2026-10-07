@@ -8,6 +8,9 @@ namespace CrescentCompass.Ui;
 internal sealed partial class CompassView
 {
     internal Dictionary<string, Vector2> PotOverlayTargets { get; } = [];
+    internal Vector2 PotTimeSyncTarget { get; private set; }
+    internal Dictionary<string, Vector2> PotTimeDebugTargets { get; } = [];
+    internal bool PotTimeDebugVisible { get; private set; }
 
     private void DrawPotOverlayControls(CompassViewState state, CompassActions actions)
     {
@@ -15,20 +18,55 @@ internal sealed partial class CompassView
         var enabled = state.PotOverlay?.Enabled == true;
         if (ImGui.Checkbox("在畫面顯示魔法罐倒數", ref enabled)) actions.PotOverlay?.SetVisible(enabled);
         PotOverlayTargets["visible"] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
-        HoverHint("關閉主介面後仍顯示倒數。僅在新月島顯示；離島、傳送、過場及隱藏遊戲介面時自動隱藏。\n沿用本場 FATE 紀錄推估，未知時間不補算；與出現通知、場景位置提示分開設定。");
-        if (!enabled) return;
-        var locked = state.PotOverlay?.Locked ?? true;
-        if (ImGui.Button(locked ? "調整位置" : "完成調整"))
+        HoverHint("關閉主介面後仍顯示倒數，拖曳標題移動並保存位置；可直接插旗預估的下一場魔法罐。\n僅在新月島顯示；離島、傳送、過場及隱藏遊戲介面時自動隱藏。\n沿用本場 FATE 紀錄推估，尚無紀錄時停用插旗；與出現通知、場景位置提示分開設定。");
+    }
+
+    private void DrawPotTimeSyncControl(CompassViewState state, CompassActions actions)
+    {
+        if (state.Fates is not { } fates) return;
+        var sharedTime = fates.FetchSharedTimeOnEntry;
+        ImGui.BeginDisabled(actions.SetFetchPotTimeOnEntry is null);
+        if (ImGui.Checkbox("進島時取得一次共享時間", ref sharedTime)) actions.SetFetchPotTimeOnEntry?.Invoke(sharedTime);
+        PotTimeSyncTarget = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        ImGui.EndDisabled();
+        HoverHint("只向 OccultOverlay／Eureka Linker 共用服務自動查詢一次，之後由本機倒數與實際觀測校正。\n送出副本識別雜湊、島嶼與資料中心 ID，不上傳角色、座標、安裝識別或魔法罐觀測資料；服務仍可見連線 IP。\n已有本地計時則免查；失敗、查無資料或島內傳送不自動重查，可在暫時診斷區手動重試。重新開啟於下次進島生效。");
+        if (fates.SharedTimeDetail.Length > 0) ImGui.TextWrapped(fates.SharedTimeDetail);
+        DrawPotTimeDebug(fates.Debug, actions);
+        ImGui.Spacing();
+    }
+
+    private void DrawPotTimeDebug(CompassPotTimeDebug? debug, CompassActions actions)
+    {
+        PotTimeDebugTargets.Clear(); PotTimeDebugVisible = false;
+        if (debug is null) return;
+        var open = ImGui.CollapsingHeader("共享時間診斷（暫時）");
+        PotTimeDebugTargets["header"] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        if (!open) return;
+        PotTimeDebugVisible = true;
+        ImGui.TextWrapped(debug.Reason);
+        if (ImGui.Button("複製診斷", new Vector2(U(112), U(30))))
         {
-            locked = !locked;
-            actions.PotOverlay?.SetLocked(locked);
+            if (actions.CopyPotTimeDebug is { } copy) copy(debug.Report); else ImGui.SetClipboardText(debug.Report);
         }
-        PotOverlayTargets["locked"] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        PotTimeDebugTargets["copy"] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        HoverHint("只複製目前診斷到剪貼簿，不會查詢或上傳。\n包含副本雜湊、FATE ID 與時間，不包含角色名稱、Content ID 或座標。");
         ImGui.SameLine();
-        if (ImGui.SmallButton("重設倒數位置")) actions.PotOverlay?.ResetPosition();
-        PotOverlayTargets["reset"] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
-        ImGui.TextWrapped(locked ? "位置已鎖定，滑鼠可穿透；按「調整位置」後拖曳浮窗。" :
-            "拖曳倒數浮窗的任意位置移動，再按「完成調整」鎖定。放開滑鼠即保存位置。");
+        ImGui.BeginDisabled(!debug.CanRetry || actions.RetryPotTime is null);
+        if (ImGui.Button("重新抓取時間", new Vector2(U(152), U(30)))) actions.RetryPotTime?.Invoke();
+        PotTimeDebugTargets["retry"] = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(debug.RetryDetail);
+        if (ImGui.BeginTable("pot-time-debug", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.NoSavedSettings))
+        {
+            ImGui.TableSetupColumn("欄位", ImGuiTableColumnFlags.WidthFixed, U(142));
+            ImGui.TableSetupColumn("資料", ImGuiTableColumnFlags.WidthStretch);
+            foreach (var row in debug.Rows)
+            {
+                ImGui.TableNextRow(); ImGui.TableNextColumn(); ImGui.TextWrapped(row.Label);
+                ImGui.TableNextColumn(); ImGui.TextWrapped(row.Value);
+            }
+            ImGui.EndTable();
+        }
         ImGui.Spacing();
     }
 

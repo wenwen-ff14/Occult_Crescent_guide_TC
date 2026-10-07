@@ -62,11 +62,11 @@ public sealed class PhantomJobSwitcher
     public string Request(byte id, PhantomJobContext context, long now, Func<byte, bool> change)
     {
         Update(context, now);
-        if (PhantomJobs.Find(id) is not { } job) return "未知的幻影職業；請使用 0～12 或完整名稱。";
-        if (context.BlockReason is { Length: > 0 } reason) return reason;
-        if (Busy) return "上一個切換請求仍在等待遊戲回覆。";
+        if (PhantomJobs.Find(id) is not { } job) return Detail = "未知的幻影職業；請使用 0～12 或完整名稱。";
+        if (context.BlockReason is { Length: > 0 } reason) return Detail = reason;
+        if (Busy) return Detail = "上一個切換請求仍在等待遊戲回覆。";
         if (context.CurrentJob == id) return Detail = $"目前已是{job.Name}。";
-        if (lastRequest is { } last && now - last < MinimumIntervalMs) return "切換過於頻繁，請稍後再試。";
+        if (lastRequest is { } last && now - last < MinimumIntervalMs) return Detail = "切換過於頻繁，請稍後再試。";
         lastRequest = now; // Reserve before native code, including rejection or exception.
         if (!change(id)) return Detail = "職業切換介面尚未就緒或遊戲未接受，請稍後再試。";
         pending = id;

@@ -4,7 +4,7 @@
     "Name": "CrescentCompass｜新月島尋寶羅盤",
     "InternalName": "CrescentCompass",
     "AssemblyVersion": "0.10.14.0",
-    "Description": "魔法罐下次預估倒數剩 5 分鐘時，顯示一次彈出通知與個人聊天提示；預設開啟，可獨立關閉，主介面關閉仍有效。巡查固定使用南部 68 點與全島已知位置，開箱或確認近距離空點後自動標記下一站；移除路線模式、物件顯示範圍、自動下一站開關與距離調整，舊設定自動套用。新增可開關的巡查進度浮窗：主介面關閉後仍顯示下一站、座標、直線距離與進度，可獨立拖曳定位與鎖定位置，提供下一站、暫停／繼續及終止按鈕，非巡查期間自動隱藏。新增可開關的魔法罐倒數浮窗：主介面關閉後仍顯示南／北罐預估倒數，可拖曳定位與鎖定滑鼠穿透。CE 冷卻改為新月島南部地圖：15 個 CE 原生 BOSS／戰鬥圖標、名稱與預估倒數；點選 BOSS 後可點擊觸發怪或 BOSS 座標插旗，支援縮放與拖曳。新增背包整理選單與 /crescent loot：292 種已記錄開箱物品，預設全部保留；標記垃圾後可啟動島內自動丟棄或一般 NPC 商店自動售出。保護 HQ、收藏品及加工裝備，逐筆等待背包確認，逾時停止。新增職業巨集快捷列圖示：單行 /crescent job 指令的預設 M 自動對應職業圖示；/crescent jobicons 可立即更新。新增標點俯視與力之塔四王房輪廓預覽（靜態示意、不改動現場標點）。新增可選擇啟用的自動開啟附近寶箱：2 公尺內按距離互動，支援地面騎乘，戰鬥、飛行、讀條及傳送時暫停，每秒最多一次，持續嘗試到開啟或離開。新增 /crescent job 職業名稱或編號 切換幻影職業，/crescent jobs 提供 13 種職業圖標與複製巨集。新增標點選單：儲存新月島南部 A–D／1–4，匯入／匯出 Waymark Preset JSON，命名、搜尋及刪除預設；非戰鬥時逐點放置，可勾選忽略距離依預設 XYZ 放置；戰鬥／傳送時停止。標點功能適配繁中 2026.09.14.0000.0000。另有巡查、魔法罐、FATE、CE 冷卻、探索筆記與設定選單。顯示南部 15 個 CE 的觸發方式與繁中怪物位置，依觀測結束估算 60／120 分鐘冷卻；到期不代表刷新。一般 FATE（包含魔法罐）自動插旗，魔法罐尋寶優先，期間保留巡查。南部 68 個寶箱依圖表編號排序，可任選起點、暫停／繼續／終止，儲存上次開箱編號。地圖 Ctrl＋滾輪縮放，地形路線、島上 12 處探索筆記篩選、南北罐座標與倒數、玩家隱藏。指令 /crescent、/crescent waymarks、/crescent ce、/crescent fate。",
+    "Description": "新月島尋寶與活動追蹤工具，支援繁中 Dalamud API 13。\n\n【寶箱巡查】南部 68 點路線、進度浮窗、自動巡查與開箱；固定路段快取，卡住時嘗試替代地面路徑。\n【魔法罐／事件】南北罐倒數與 5 分鐘提醒、FATE 插旗、CE 地圖與觸發怪位置。\n【探索／職業】探索筆記篩選、幻影職業切換與巨集圖示。\n【標點／背包】標點預設與俯視預覽；寵物、樂譜等物品分類，預設全部保留。\n\n輸入 /crescent 開啟。自動巡查需相容的 vnavmesh；自動丟棄／售出只處理手動標記的垃圾。\n倒數為預估；巡查不偵測或避讓怪物。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/wenwen-ff14/Occult_Crescent_guide_TC",
     "Tags": [
@@ -19,7 +19,7 @@
     "LoadSync": false,
     "CanUnloadAsync": false,
     "LoadPriority": 0,
-    "Punchline": "巡查與魔法罐浮窗、CE 地圖、觸發怪插旗與背包整理",
+    "Punchline": "寶箱巡查、魔法罐提醒、CE 地圖與背包整理，一個羅盤搞定。",
     "AcceptsFeedback": true,
     "DownloadLinkInstall": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.10.14.0.zip",
     "DownloadLinkUpdate": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/packages/CrescentCompass/0.10.14.0.zip",
@@ -32,6 +32,7 @@
       "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/docs/previews/general-fates.png",
       "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/docs/previews/chart-route.png"
     ],
-    "Changelog": "新增魔法罐預估剩 5 分鐘提醒：預設開啟，以彈出通知與個人聊天提示顯示南／北罐及預估時間，每輪只提醒一次。魔法罐頁可獨立關閉，主介面及倒數浮窗關閉仍有效；未知或逾時不提醒。"
+    "Changelog": "新增魔法罐預估剩 5 分鐘提醒：預設開啟，以彈出通知與個人聊天提示顯示南／北罐及預估時間，每輪只提醒一次。魔法罐頁可獨立關閉，主介面及倒數浮窗關閉仍有效；未知或逾時不提醒。",
+    "IconUrl": "https://raw.githubusercontent.com/wenwen-ff14/Occult_Crescent_guide_TC/main/CrescentCompass/images/icon.png"
   }
 ]

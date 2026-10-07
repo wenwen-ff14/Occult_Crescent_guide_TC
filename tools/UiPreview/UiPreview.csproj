@@ -16,6 +16,8 @@
     <None Include="../../.sdk/cimgui.dll" Link="cimgui.dll" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../CrescentCompass/Data/SouthHorn/carrot_locations.json" Link="carrot_locations.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../CrescentCompass/Data/SouthHorn/treasure_locations.json" Link="treasure_locations.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../CrescentCompass/Data/SouthHorn/treasure_route.json" Link="treasure_route.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../CrescentCompass/Data/SouthHorn/precomputed_treasure_hunt_data.json" Link="precomputed_treasure_hunt_data.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../CrescentCompass/Data/SouthHorn/exploration_locations.json" Link="exploration_locations.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

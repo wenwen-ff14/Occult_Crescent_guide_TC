@@ -4,11 +4,13 @@ namespace CrescentCompass.Core;
 
 public readonly record struct ChestInteractionContext(ushort Territory, uint Instance, ulong CharacterId,
     bool Ready, bool InCombat = false, bool Occupied = false, bool Mounted = false, bool Dead = false, bool Paused = false,
-    bool InFlight = false, bool RidingPillion = false)
+    bool InFlight = false, bool RidingPillion = false, bool Jumping = false)
 {
-    public string BlockReason => !Ready || CharacterId == 0 || !SpotCatalog.IsSupported(Territory) ? "等待進入新月島且角色可操作。" :
-        Dead ? "角色倒地，暫停開箱。" : InCombat ? "戰鬥中，暫停開箱。" : Occupied ? "互動、讀條或過場中，暫停開箱。" :
+    public string BlockReason => GetBlockReason();
+    public string GetBlockReason(bool allowCombat = false, bool allowJumping = false) => !Ready || CharacterId == 0 || !SpotCatalog.IsSupported(Territory) ? "等待進入新月島且角色可操作。" :
+        Dead ? "角色倒地，暫停開箱。" : InCombat && !allowCombat ? "戰鬥中，暫停開箱。" : Occupied ? "互動、讀條或過場中，暫停開箱。" :
         InFlight ? "飛行中，請落地後靠近寶箱。" : RidingPillion ? "乘坐他人坐騎中，暫停開箱。" :
+        Jumping && !allowJumping ? "跳躍中，落地後再開箱。" :
         Paused ? "巡查已暫停，自動開箱同步暫停。" : "";
 }
 
@@ -18,6 +20,7 @@ public sealed class AutoChestOpener
     public const float Radius = 2;
     public const float RearmRadius = 6;
     public const int AttemptIntervalMs = 1000;
+    public const int PatrolAttemptIntervalMs = 500;
     private sealed class Attempt(Vector3 position, long seen)
     {
         public Vector3 Position { get; } = position;
@@ -43,13 +46,13 @@ public sealed class AutoChestOpener
         Coordinates.IsFinite(player) && Vector3.DistanceSquared(chest.Position, player) <= Radius * Radius;
 
     public void Update(bool enabled, ChestInteractionContext context, IReadOnlyList<Observation> observations,
-        Vector3 player, long now, Func<Observation, bool> interact)
+        Vector3 player, long now, Func<Observation, bool> interact, int attemptIntervalMs = AttemptIntervalMs, bool allowCombat = false)
     {
         if (!enabled) { Reset(); Detail = "關閉；勾選後自動開啟 2 公尺內的寶箱。"; return; }
         var identity = (context.Territory, context.Instance, context.CharacterId);
         if (session != identity || lastTick is { } previous && now < previous) Reset();
         session = identity; lastTick = now;
-        if (context.BlockReason is { Length: > 0 } reason) { Detail = reason; return; }
+        if (context.GetBlockReason(allowCombat) is { Length: > 0 } reason) { Detail = reason; return; }
         if (!Coordinates.IsFinite(player)) { Detail = "等待角色座標。"; return; }
 
         var nearby = observations.Where(o => CofferKinds.IsCoffer(o.Kind) && Coordinates.IsFinite(o.Position) &&
@@ -68,8 +71,9 @@ public sealed class AutoChestOpener
         }
         if (nearby.Any(o => o.Opening && Vector3.DistanceSquared(o.Position, player) <= Radius * Radius))
         { Detail = "附近寶箱正在開啟，等待完成。"; return; }
-        if (lastAttempt is { } last && now - last < AttemptIntervalMs)
-        { Detail = "附近持續開箱中（每秒最多一次）；等待遊戲更新。"; return; }
+        attemptIntervalMs = Math.Clamp(attemptIntervalMs, PatrolAttemptIntervalMs, AttemptIntervalMs);
+        if (lastAttempt is { } last && now - last < attemptIntervalMs)
+        { Detail = "已送出互動，等待遊戲更新。"; return; }
 
         var eligible = nearby.Where(o => Eligible(o, player) && !attempts[(o.ObjectId, o.DataId)].Spent).ToArray();
         // Rotate between nearby chests so one rejected interaction cannot starve the others.

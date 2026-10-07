@@ -13,6 +13,9 @@ public sealed record LootShopState(bool Retainer, int Mode, bool StartingBuy, bo
 
 public static class LootCleanup
 {
+    // Excluded from both the catalog and execution, including previously saved garbage rules.
+    public static bool IsExcluded(uint id) => id is 47866 or 47868 or 48096;
+
     // On the TC client WaitingForSellConfirm remains true AFTER the sale dialog closes.
     // Only the next sale preparation / shop UI event clears it. Treating it as busy
     // prevents that next sale forever; the live proxy's AddonId is the dialog lifetime.
@@ -32,13 +35,13 @@ public static class LootCleanup
         var items = JsonSerializer.Deserialize<LootItem[]>(stream) ?? [];
         if (items.Any(i => i.Id == 0 || string.IsNullOrWhiteSpace(i.Name)) || items.Select(i => i.Id).Distinct().Count() != items.Length)
             throw new InvalidDataException("Invalid loot catalog");
-        return items;
+        return items.Where(i => !IsExcluded(i.Id)).ToArray();
     }
 
     // Only ordinary bags; never armory, equipped gear, key items, currencies, saddlebags or retainers.
     public static bool Eligible(LootSlot slot, LootItem? item, IReadOnlySet<uint> garbage, LootCleanupMode mode) =>
         Enum.IsDefined(mode) && slot.Bag is >= 0 and <= 3 && slot.Slot is >= 0 and < 35 &&
-        slot.Quantity > 0 && !slot.Protected && item is { Available: true } && item.Id == slot.ItemId &&
+        slot.Quantity > 0 && !slot.Protected && !IsExcluded(slot.ItemId) && item is { Available: true } && item.Id == slot.ItemId &&
         garbage.Contains(item.Id) && (mode != LootCleanupMode.Sell || item.PriceLow > 0);
 }
 

@@ -9,7 +9,7 @@ internal static class PatrolOverlayPreview
     {
         var running = new CompassPatrolOverlayState("巡查中", "下一站 #24 · 銀寶箱", "X 27.0 / Y 18.2 · 直線 152 m",
             8, 3, 57, 68, "靠近下一站後確認寶箱；空點判定中會保留目前站點。", false);
-        foreach (var scenario in new[] { "running", "paused", "pot-priority", "fate-priority", "planning", "planning-empty", "finished", "idle", "empty-route", "hidden", "locked", "drag", "restore", "scaled", "both", "controls-locked", "controls-unlocked", "last-station", "occupied", "paused-planning" })
+        foreach (var scenario in new[] { "running", "paused", "pot-priority", "fate-priority", "planning", "planning-empty", "finished", "idle", "empty-route", "hidden", "interactive", "drag", "restore", "scaled", "both", "controls", "last-station", "occupied", "paused-planning" })
         {
             var overlay = new PatrolOverlay(); var potOverlay = new PotCountdownOverlay();
             var io = ImGui.GetIO(); io.FontGlobalScale = scenario == "scaled" ? 1.5f : 1;
@@ -41,15 +41,14 @@ internal static class PatrolOverlayPreview
                 () => { calls.Add("stop"); state = state with { Remaining = 0, Total = 0, Planning = false, Paused = false }; });
             string[] clicks = scenario switch
             {
-                "controls-locked" or "controls-unlocked" => ["next", "pause", "next", "pause", "stop"],
+                "controls" => ["next", "pause", "next", "pause", "stop"],
                 "last-station" or "occupied" or "pot-priority" or "fate-priority" or "paused" or "planning" => ["next"],
                 "paused-planning" => ["pause", "stop"],
                 _ => [],
             };
-            var locked = scenario is not ("drag" or "idle" or "controls-unlocked");
             for (var frame = 0; frame < (clicks.Length > 0 ? 3 + clicks.Length * 4 : scenario == "drag" ? 9 : 5); frame++)
             {
-                if (scenario == "locked") io.AddMousePosEvent(70, 115);
+                if (scenario == "interactive") io.AddMousePosEvent(70, 115);
                 if (clicks.Length > 0 && frame >= 3)
                 {
                     var index = (frame - 3) / 4; var step = (frame - 3) % 4;
@@ -71,16 +70,17 @@ internal static class PatrolOverlayPreview
                 if (scenario == "both")
                 {
                     var now = DateTimeOffset.UtcNow;
-                    potOverlay.Draw(new([], PotFateTracker.Definitions[0], now.AddSeconds(522), true, true), now, true, true, new(24, 82), _ => { });
+                    potOverlay.Draw(new([], PotFateTracker.Definitions[0], now.AddSeconds(522), true, true), now, true, new(24, 82), _ => { },
+                        true, _ => { });
                 }
-                overlay.Draw(state, scenario != "hidden", locked, saved, value => { saved = value; saves++; }, commands);
+                overlay.Draw(state, scenario != "hidden", saved, value => { saved = value; saves++; }, commands);
                 ImGui.Render();
             }
-            var shouldShow = scenario is not ("hidden" or "finished" or "idle" or "empty-route" or "controls-locked" or "controls-unlocked" or "last-station" or "paused-planning");
+            var shouldShow = scenario is not ("hidden" or "finished" or "idle" or "empty-route" or "controls" or "last-station" or "paused-planning");
             if (overlay.Drawn != shouldShow) throw new InvalidOperationException($"Patrol overlay visibility is wrong after {scenario}.");
             string[] expected = scenario switch
             {
-                "controls-locked" or "controls-unlocked" => ["next", "pause", "resume", "stop"],
+                "controls" => ["next", "pause", "resume", "stop"],
                 "last-station" => ["next"],
                 "paused-planning" => ["resume", "stop"],
                 _ => [],

@@ -43,7 +43,7 @@ public sealed partial class Plugin
         try
         {
             phantomContext = ReadPhantomContext();
-            if (phantomSwitcher.Update(phantomContext, now) is { } result) Chat.Print($"[新月島羅盤] {result}");
+            phantomSwitcher.Update(phantomContext, now);
         }
         catch (Exception error) { phantomFaulted = true; Log.Error(error, "Phantom job state read failed"); }
     }
@@ -55,16 +55,14 @@ public sealed partial class Plugin
             if (disposed) return;
             try
             {
-                if (phantomFaulted) { Chat.Print("[新月島羅盤] 職業介面讀取失敗，請重新載入插件後再試。"); return; }
+                if (phantomFaulted) return;
                 phantomContext = ReadPhantomContext();
-                var result = phantomSwitcher.Request(id, phantomContext, Environment.TickCount64, ChangePhantomJob);
-                Chat.Print($"[新月島羅盤] {result}");
+                phantomSwitcher.Request(id, phantomContext, Environment.TickCount64, ChangePhantomJob);
             }
             catch (Exception error)
             {
                 phantomFaulted = true;
                 Log.Error(error, "Phantom job switch failed");
-                Chat.Print("[新月島羅盤] 職業切換失敗，請查看 Dalamud 記錄。");
             }
         });
     }
@@ -98,8 +96,7 @@ public sealed partial class Plugin
             parts.Length == 1 && parts[0].Equals("job", StringComparison.OrdinalIgnoreCase))
         { window.OpenPhantomJobs(); return true; }
         if (!parts[0].Equals("job", StringComparison.OrdinalIgnoreCase)) return false;
-        if (PhantomJobs.Resolve(parts[1]) is { } job) SwitchPhantomJob(job.Id);
-        else Chat.Print("[新月島羅盤] 未知職業。用法：/crescent job 騎士 或 /crescent job 1；/crescent jobs 查看圖標與全部指令。");
+        SwitchPhantomJob(PhantomJobs.Resolve(parts[1])?.Id ?? byte.MaxValue);
         return true;
     }
 }

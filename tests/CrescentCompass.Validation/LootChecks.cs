@@ -6,12 +6,30 @@ internal static class LootChecks
     {
         using var catalogStream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "Data", "loot_catalog.json"));
         var catalog = LootCleanup.Load(catalogStream);
-        check(catalog.Count == 292 && catalog.Select(i => i.Id).Distinct().Count() == 292, "Catalog preserves complete audited unique item union");
+        check(catalog.Count == 289 && catalog.Select(i => i.Id).Distinct().Count() == 289, "Cleanup catalog retains audited items except three explicit exclusions");
+        check(catalog.All(i => i.Id is not (47866 or 47868 or 48096)), "Excluded materials and fortune carrot are absent from cleanup");
         check(catalog.Single(i => i.Id == 8143).Sources.Length == 2, "Common bronze loot retains both island sources");
         check(catalog.Any(i => i.Id == 48000) && catalog.Any(i => i.Id == 52266), "Tower rewards included");
         check(catalog.All(i => i.Sources.Length > 0 && !i.EnglishName.StartsWith("Item ")), "Every catalog entry has provenance and a resolved name");
         var item = new LootItem(100, "物品", "Item", ["South Horn / Treasure Bronze"], true, 10, 1);
         var slot = new LootSlot(0, 2, 100, 99, false);
+        foreach (var (id, expected) in new (uint, LootCategory)[] {
+            (21058, LootCategory.Minion), (48204, LootCategory.Orchestrion), (52366, LootCategory.Orchestrion),
+            (47979, LootCategory.Mount), (26782, LootCategory.Mount), (52266, LootCategory.Mount),
+            (10387, LootCategory.Equipment), (47987, LootCategory.Appearance), (47983, LootCategory.Appearance),
+            (48161, LootCategory.Appearance), (13114, LootCategory.Dye), (41757, LootCategory.Materia),
+            (48140, LootCategory.Furnishing), (48157, LootCategory.Consumable), (47734, LootCategory.FieldNote),
+            (51989, LootCategory.FieldNote), (48000, LootCategory.Card), (48736, LootCategory.Other) })
+            check(LootCategories.Classify(catalog.Single(i => i.Id == id)) == expected, $"Loot category matches item {id}: {expected}");
+        check(LootCategories.Classify(item with { SearchCategory = uint.MaxValue }) == LootCategory.Other, "Unknown categories remain visible under Other");
+        var excluded = new uint[] { 47866, 47868, 48096 }.Select(id => item with { Id = id }).ToArray();
+        using (var oldCatalog = new MemoryStream(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(excluded.Append(item))))
+            check(LootCleanup.Load(oldCatalog).Select(i => i.Id).SequenceEqual(new[] { item.Id }), "Old or regenerated catalog cannot reintroduce excluded items");
+        HashSet<uint> oldRules = [100, 47866, 47868, 48096];
+        foreach (var removed in excluded)
+        foreach (var mode in new[] { LootCleanupMode.Discard, LootCleanupMode.Sell })
+            check(!LootCleanup.Eligible(slot with { ItemId = removed.Id }, removed, oldRules, mode), "Excluded item is protected even with stale rules and a sellable price");
+        check(oldRules.RemoveWhere(LootCleanup.IsExcluded) == 3 && oldRules.SetEquals(new uint[] { 100 }), "Rule migration removes only the three excluded item IDs");
         HashSet<uint> garbage = [100];
         var dialog = new LootSaleDialog(123, 123, 123, 99, 99, true, false, false, 2, 0, 2, 100, 99);
         var shop = new LootShopState(false, 1, false, false, false, false, 0);

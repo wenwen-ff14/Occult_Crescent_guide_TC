@@ -6,13 +6,15 @@ namespace CrescentCompass.Ui;
 
 internal sealed partial class CompassView
 {
+    internal bool FateAutoFlagShown { get; private set; }
     private void DrawGeneralFates(CompassViewState state, CompassActions actions)
     {
         ImGui.TextColored(Coral, "新月島 FATE · 事件與自動標點");
         var fates = state.GeneralFates;
-        var enabled = fates?.AutoFlag ?? true;
+        var enabled = fates?.AutoFlag ?? false;
         if (ImGui.Checkbox("FATE 出現時自動標點", ref enabled)) actions.SetFateAutoFlag?.Invoke(enabled);
-        ImGui.TextWrapped("包含島上所有一般 FATE 與魔法罐 FATE。每場標點一次；同時出現優先最新，開始時間相同則選最近的一場。上島時已出現的事件也會標點。");
+        FateAutoFlagShown = enabled;
+        ImGui.TextWrapped("啟用後包含島上所有一般 FATE 與魔法罐 FATE。每場標點一次；同時出現優先最新，開始時間相同則選最近的一場。上島時已出現的事件也會標點。");
         ImGui.TextWrapped("魔法罐尋寶優先。FATE 標點期間保留巡查路線，事件結束後接續；可隨時解除。關閉後重新開啟只處理下一場新事件。");
         ImGui.TextWrapped(fates?.Detail ?? "等待進入新月島。");
         ImGui.BeginDisabled(fates?.Holding != true);

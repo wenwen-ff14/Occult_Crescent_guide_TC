@@ -11,11 +11,23 @@ internal sealed partial class CompassView
     internal Dictionary<string, Vector2> PhantomTargets { get; } = [];
     private string copiedPhantomMacro = "";
 
+    internal Vector2 PhantomOverlayToggleTarget { get; private set; }
+    private void DrawPhantomOverlayControl(CompassViewState state, CompassActions actions)
+    {
+        var enabled = state.PhantomOverlay?.Enabled == true;
+        ImGui.BeginDisabled(actions.PhantomOverlay is null);
+        if (ImGui.Checkbox("在畫面顯示幻影職業", ref enabled)) actions.PhantomOverlay?.SetVisible(enabled);
+        PhantomOverlayToggleTarget = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        ImGui.EndDisabled();
+        HoverHint("關閉主介面後仍可點選職業圖示切換；拖曳標題移動並保存位置。\n只在新月島顯示，離島、過場及隱藏遊戲介面時隱藏；戰鬥、倒地或互動期間無法切換。");
+    }
+
     private void DrawPhantomJobs(CompassViewState state, CompassActions actions)
     {
         PhantomTargets.Clear();
         if (ImGui.Button("← 返回設定")) ShowPhantomJobs = false;
         ImGui.SameLine(); ImGui.TextColored(Violet, "幻影職業／巨集");
+        DrawPhantomOverlayControl(state, actions);
         ImGui.Spacing();
         var jobs = state.PhantomJobs;
         var current = jobs?.CurrentJob is { } id ? PhantomJobs.Find(id) : null;

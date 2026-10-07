@@ -1,0 +1,12 @@
+Generator: built-in image_gen tool
+Asset: CrescentCompass plugin icon
+Generated original: icon-original.png
+Runtime export: ../../CrescentCompass/images/icon.png (512x512 RGBA PNG)
+Only mechanical resizing is applied for Dalamud's icon size limit.
+
+Prompt:
+Use case: logo-brand. Asset type: finished square PNG plugin icon for CrescentCompass, a fantasy island treasure compass utility. Primary request: a distinctive crescent moon embracing a four-point navigation compass. One large pale-gold crescent forms the outer silhouette, enclosing a crisp mint/teal compass needle and a small ivory central jewel. Refined fantasy-game equipment icon, polished enamel and restrained brushed metal, mostly clean flat shapes with subtle dimensional highlights. Strong recognizable silhouette, balanced centered composition, generous 8 percent transparent padding. All detail must stay readable at 64 by 64 pixels. No text, letters, cardinal direction labels, numbers, watermark, extra stars, treasure chest, landscape, particles, or busy ornament. Transparent background, no square backdrop, no drop shadow outside the emblem. Output a single icon, not a sheet or mockup. Target 512 by 512 pixels, 1:1 square, RGBA PNG.
+
+Integration reference:
+https://dalamud.dev/plugin-development/plugin-metadata/
+https://github.com/goatcorp/Dalamud/blob/master/Dalamud/Interface/Internal/Windows/PluginImageCache.cs

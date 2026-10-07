@@ -17,7 +17,7 @@ public sealed partial class Plugin
         var now = Environment.TickCount64;
         if (macroIconFaulted || now - lastMacroIconScan < 2000) return;
         lastMacroIconScan = now;
-        RefreshPhantomMacroIcons(false);
+        RefreshPhantomMacroIconsCore();
     }
 
     internal void RefreshPhantomMacroIcons() => _ = Framework.RunOnFrameworkThread(() =>
@@ -25,10 +25,10 @@ public sealed partial class Plugin
         if (disposed) return;
         macroIconFaulted = false;
         lastMacroIconScan = Environment.TickCount64;
-        RefreshPhantomMacroIcons(true);
+        RefreshPhantomMacroIconsCore();
     });
 
-    private unsafe void RefreshPhantomMacroIcons(bool announce)
+    private unsafe void RefreshPhantomMacroIconsCore()
     {
         if (disposed) return;
         var changed = 0;
@@ -78,6 +78,5 @@ public sealed partial class Plugin
             macroIconDetail = $"圖示更新發生錯誤（本次已處理 {changed} 個），已停止自動更新；請查看 Dalamud 記錄。";
             Log.Error(error, "Phantom macro icon update failed");
         }
-        finally { if (announce) Chat.Print($"[新月島羅盤] {macroIconDetail}"); }
     }
 }

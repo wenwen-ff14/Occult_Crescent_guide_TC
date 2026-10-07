@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 2,
+  "territoryId": 1252,
+  "zone": "SouthHorn",
+  "source": "shard-regions-v2+kmeans+2opt+oropt+levelorder+stonemarsh-swap",
+  "segments": [
+    {
+      "id": "base-camp",
+      "nodes": [
+        1804,
+        1801,
+        1802,
+        1798,
+        1797,
+        1799,
+        1800,
+        1803,
+        1789,
+        1806,
+        1805,
+        1836,
+        1837,
+        1838
+      ],
+      "transitionAfter": {
+        "type": "auto"
+      }
+    },
+    {
+      "id": "wanderers-haven",
+      "nodes": [
+        1811,
+        1841,
+        1842,
+        1794,
+        1840,
+        1839,
+        1812,
+        1810,
+        1808,
+        1809,
+        1807
+      ],
+      "transitionAfter": {
+        "type": "auto"
+      }
+    },
+    {
+      "id": "crystallized-caverns-1",
+      "nodes": [
+        1818,
+        1814,
+        1813
+      ],
+      "transitionAfter": {
+        "type": "auto"
+      }
+    },
+    {
+      "id": "crystallized-caverns-2",
+      "nodes": [
+        1856,
+        1817,
+        1819,
+        1820,
+        1791,
+        1821,
+        1822,
+        1843,
+        1844,
+        1795,
+        1845,
+        1846
+      ],
+      "transitionAfter": {
+        "type": "auto"
+      }
+    },
+    {
+      "id": "eldergrowth-1",
+      "nodes": [
+        1816,
+        1793,
+        1827,
+        1828,
+        1823,
+        1825,
+        1829,
+        1830,
+        1792,
+        1853
+      ],
+      "transitionAfter": {
+        "type": "auto"
+      }
+    },
+    {
+      "id": "eldergrowth-2",
+      "nodes": [
+        1790,
+        1833,
+        1832,
+        1831,
+        1835,
+        1826,
+        1824,
+        1854,
+        1815,
+        1855
+      ],
+      "transitionAfter": {
+        "type": "auto"
+      }
+    },
+    {
+      "id": "stonemarsh",
+      "nodes": [
+        1834,
+        1848,
+        1847,
+        1850,
+        1849,
+        1852,
+        1851,
+        1796
+      ]
+    }
+  ]
+}

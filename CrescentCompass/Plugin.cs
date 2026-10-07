@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using CrescentCompass.Core;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Fates;
+using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui.Toast;
@@ -26,6 +27,7 @@ public sealed partial class Plugin : IDalamudPlugin
     [PluginService] internal static ICommandManager Commands { get; private set; } = null!;
     [PluginService] internal static IClientState Client { get; private set; } = null!;
     [PluginService] internal static IObjectTable Objects { get; private set; } = null!;
+    [PluginService] internal static ITargetManager Targets { get; private set; } = null!;
     [PluginService] internal static IPartyList Party { get; private set; } = null!;
     [PluginService] internal static IDataManager Data { get; private set; } = null!;
     [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
@@ -130,6 +132,7 @@ public sealed partial class Plugin : IDalamudPlugin
             PluginInterface.SavePluginConfig(Config);
         }
         Config.ChartStartNumber = Math.Clamp(Config.ChartStartNumber, 1, ChestChart.Count);
+        if (!Enum.IsDefined(Config.PatrolRoute)) Config.PatrolRoute = PatrolRouteKind.Bocchi;
         Config.ChestProgress ??= [];
         InitializeLoot();
         var assembly = Assembly.GetExecutingAssembly();
@@ -143,12 +146,13 @@ public sealed partial class Plugin : IDalamudPlugin
             using var stream = assembly.GetManifestResourceStream(name)!;
             potCatalog.AddRange(PotCatalog.Load(stream));
         }
+        InitializeBocchiRoute();
         waymarks = new WaymarkLibrary(Path.Combine(PluginInterface.GetPluginConfigDirectory(), "waymarks.json"));
         window = new MainWindow(this);
         windows.AddWindow(window);
         Commands.AddHandler("/crescent", new CommandInfo(OnCommand)
         {
-            HelpMessage = "新月島尋寶羅盤。loot 背包整理保留／丟棄／售出，jobs 職業圖標與巨集，job 職業名稱或編號 切換幻影職業，jobicons 更新快捷列巨集圖示；waymarks 標點，ce 冷卻，fate 事件，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 旗標，pot 魔法罐，next 已巡查，reset 續巡，clear 清除巡查。",
+            HelpMessage = "新月島尋寶羅盤。autopatrol 自動巡查寶箱，autopatrol stop 停止自動巡查；loot 背包整理保留／丟棄／售出，jobs 職業圖標與巨集，job 職業名稱或編號 切換幻影職業，jobicons 更新快捷列巨集圖示；waymarks 標點，ce 冷卻，fate 事件，route 規劃，pause 暫停，resume 繼續，stop 終止，flag 旗標，pot 魔法罐，next 已巡查，reset 續巡，clear 清除巡查。",
         });
         Framework.Update += Update;
         Chat.ChatMessage += OnChatMessage;
@@ -162,12 +166,14 @@ public sealed partial class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi += OpenWindow;
         PluginInterface.UiBuilder.OpenConfigUi += window.OpenSettings;
         Log.Information($"CrescentCompass {assembly.GetName().Version} loaded; auto-next={Config.AutoAdvanceChests}, empty-radius={Config.EmptyCheckRadius:F0}m, mode={Config.DisplayMode}, pot-auto={Config.AutoFlagPot}, pot-fate-notify={Config.NotifyPotFateSpawn}, fate-auto={Config.AutoFlagFates}, hide-players={Config.HideOtherPlayers}");
+        Log.Information($"[PotTime] diagnostic=pot-debug-2; provider=OccultTrackerV3; entry-query={Config.FetchPotTimeOnEntry}; uploads=disabled");
     }
 
     private void TerritoryChanged(ushort _) { CancelWaymarks("區域切換，停止標點還原。"); patrolContext.Suspend(); SuspendPatrol(); }
 
     private void SuspendPatrol()
     {
+        SuspendAutoPatrol("傳送讀取中，保留自動巡查與站點。");
         FateFlags.Suspend();
         CeCooldowns.Suspend();
         if (routeSuspended) return;
@@ -185,12 +191,16 @@ public sealed partial class Plugin : IDalamudPlugin
 
     private void ResetSession(ushort territory)
     {
+        ResetPotEntryTimeSync(territory);
+        GroundNavigation.PatrolPaths.Clear();
+        StopAutoPatrol("區域、分流或角色已變更，停止自動巡查。");
         autoChestOpener.Reset();
         FateFlags.Reset(); fateNavigationWasActive = false;
         CeCooldowns.Reset();
         StopPlanning(); StopGroundInspection(); WalkingRoute = null;
         pendingResume = null; routeSuspended = false; routePriorities = new HashSet<string>();
         Session.Reset(territory, catalog);
+        ResetCarrotSession();
         Session.OnlyUnexplored = Config.OnlyUnexplored;
         sessionCharacterId = territory == 0 || !PlayerState.IsLoaded ? 0 : PlayerState.ContentId;
         ExplorationDetail = "等待角色探索紀錄；未讀取前不列入未探索清單。";
@@ -223,6 +233,7 @@ public sealed partial class Plugin : IDalamudPlugin
                 : Remaining.Count == 0 && pendingResume is null ? "已返回同島同分流；目前沒有進行中的巡查。"
                 : "已返回同島同分流，巡查紀錄保留；將從傳送落點接續規劃。";
         }
+        UpdateAutoPatrol(now);
         if (!Active || Objects.LocalPlayer is not { } player) return;
         if (PlayerState.IsLoaded && PlayerState.ContentId != 0 && sessionCharacterId != PlayerState.ContentId)
         { ResetSession(Client.TerritoryType); PotFates.Reset(); }
@@ -246,14 +257,16 @@ public sealed partial class Plugin : IDalamudPlugin
             Session.Observe(observations, time);
             if (chestOpenTracker.Update(catalog, observations, Position, player.IsCasting ? player.CastTargetObjectId : 0, now, time) is { } opened)
                 SaveChestProgress(opened);
-            UpdateAutoChests(observations, now);
             potAutomation.Update(Pot, Config.AutoFlagPot, !IsOccupied, now, FlagPot);
             UpdateFateNavigation();
             ResumeWalkingPlan();
             PollWalkingPlan();
             if (!IsPaused && !IsPlanning) UpdateRoute(observations, now);
+            UpdateAutoPatrol(now);
+            UpdateAutoChests(observations, now);
+            UpdateCarrotGathering(observations, now);
             // Keep pot navigation in charge for the whole search, including waits for a reveal or new hint.
-            if (!IsPaused && !IsPlanning && !EventNavigationActive && Config.AutoAdvanceChests && !IsOccupied && routeAutomation.CanAttemptFlag(Remaining.FirstOrDefault()?.Id, now))
+            if (!IsPaused && !IsPlanning && !EventNavigationActive && (Config.AutoAdvanceChests || autoPatrol.Enabled) && !IsOccupied && routeAutomation.CanAttemptFlag(Remaining.FirstOrDefault()?.Id, now))
             {
                 var flagged = false;
                 try { flagged = TryFlag(Remaining[0]); }
@@ -262,6 +275,7 @@ public sealed partial class Plugin : IDalamudPlugin
         }
         catch (Exception error)
         {
+            if (autoPatrol.Enabled) { autoPatrol.Fail("寶箱偵測失敗，已停止自動巡查。"); PauseRoute(); }
             routeAutomation.ResetInspection();
             chestOpenTracker.Reset();
             Message = "偵測失敗；請查看 Dalamud 記錄。";
@@ -276,12 +290,16 @@ public sealed partial class Plugin : IDalamudPlugin
     {
         try
         {
-            if (Fates.Address == 0) { FateFlags.Suspend(); return; }
+            if (Fates.Address == 0) { potTimeScanIssue = "FATE 表尚未就緒。"; FateFlags.Suspend(); return; }
             List<PotFateObservation> observed = [];
             List<FateFlagObservation> allFates = [];
+            List<PotFingerprintFate> fingerprints = [];
+            var tableRows = 0; var validRows = 0;
             foreach (var fate in Fates)
             {
+                tableRows++;
                 if (!Fates.IsValid(fate) || fate.TerritoryType.RowId != Client.TerritoryType) continue;
+                validRows++;
                 var phase = fate.State switch
                 {
                     FateState.Running => PotFatePhase.Running,
@@ -290,6 +308,8 @@ public sealed partial class Plugin : IDalamudPlugin
                     _ => (PotFatePhase?)null,
                 };
                 if (phase is null) continue;
+                if (phase != PotFatePhase.Finished && fate.Position != Vector3.Zero && Coordinates.IsFinite(fate.Position))
+                    fingerprints.Add(new(fate.FateId, fate.StartTimeEpoch));
                 allFates.Add(new(fate.FateId, Client.TerritoryType, fate.Name.TextValue, fate.Position, fate.StartTimeEpoch,
                     fate.Duration, fate.Progress, phase != PotFatePhase.Finished, phase == PotFatePhase.Preparation));
                 if (PotFateTracker.Find(fate.FateId, Client.TerritoryType) is null) continue;
@@ -299,6 +319,7 @@ public sealed partial class Plugin : IDalamudPlugin
             var now = DateTimeOffset.UtcNow;
             FateFlags.Observe(Client.TerritoryType, Client.Instance, allFates, now, Config.AutoFlagFates, Position);
             var notices = PotFates.Update(Client.TerritoryType, Client.Instance, observed, now, Config.NotifyPotFateSpawn);
+            UpdatePotEntryTimeSync(fingerprints, tableRows, validRows, now);
             foreach (var fate in notices)
             {
                 var position = Coordinates.IsFinite(fate.Position) ? MapPosition(new Spot("pot-fate", Client.TerritoryType, SpotKind.Other, 0, fate.Position)) : "座標尚未就緒";
@@ -325,6 +346,7 @@ public sealed partial class Plugin : IDalamudPlugin
         }
         catch (Exception error)
         {
+            potTimeScanIssue = $"FATE 掃描錯誤：{error.GetType().Name}";
             FateFlags.Suspend();
             if (tick - lastFateError > 10_000) { lastFateError = tick; Log.Error(error, "CrescentCompass FATE scan failed"); }
         }
@@ -368,12 +390,15 @@ public sealed partial class Plugin : IDalamudPlugin
     private void UpdateRoute(IReadOnlyList<Observation> observations, long now)
     {
         if (EventNavigationActive) { routeAutomation.ResetInspection(); StopGroundInspection(); return; }
+        if (CarrotMode) { UpdateCarrotRoute(observations, now); return; }
         UpdateHeadPath(now);
         var groundBlock = GroundInspectionBlock(now);
-        var result = routeAutomation.Update(Session, Remaining, observations, Position, now, Config.DisplayMode, Config.AutoAdvanceChests, !IsOccupied, Config.EmptyCheckRadius, groundBlock, preservePlannedStops: true);
+        var result = routeAutomation.Update(Session, Remaining, observations, Position, now, Config.DisplayMode, Config.AutoAdvanceChests || autoPatrol.Enabled,
+            !IsOccupied && (!autoPatrol.Enabled || AutoChestContext.GetBlockReason(allowCombat: true).Length == 0), Config.EmptyCheckRadius, groundBlock, preservePlannedStops: true,
+            emptyWaitMs: autoPatrol.Enabled ? PatrolEmptyCheck.ConfirmationMs : RouteAutomation.EmptyWaitMs);
         if (result.Reason != RouteAdvanceReason.None)
         {
-            Message = result.Reason == RouteAdvanceReason.Empty ? "附近連續 3 秒沒有可用寶箱，已略過此點。" : "目前寶箱已開啟，已移至下一站。";
+            Message = result.Reason == RouteAdvanceReason.Empty ? autoPatrol.Enabled ? "已提前確認此點沒有可用寶箱，前往下一站。" : "附近連續 3 秒沒有可用寶箱，已略過此點。" : "目前寶箱已開啟，已移至下一站。";
             routeRevision = Session.Revision;
             if (Remaining.Count == 0) Message += " " + RouteEndMessage();
         }
@@ -385,6 +410,17 @@ public sealed partial class Plugin : IDalamudPlugin
         var head = Remaining.FirstOrDefault();
         if (IsOccupied || head is null || !Session.CanPatrol(head.Id)) { StopGroundInspection(); return; }
         if (head != inspectionTarget) { StopGroundInspection(); inspectionTarget = head; }
+        if (autoPatrol.Enabled)
+        {
+            var path = autoPatrol.PathFrom(Position);
+            if (path is not null || autoPatrol.Recovering || Vector3.DistanceSquared(Position, head.Position) > PatrolEmptyCheck.EarlyRadius * PatrolEmptyCheck.EarlyRadius)
+            {
+                if (inspectionTask is not null) { StopGroundInspection(); inspectionTarget = head; }
+                inspectionPath = path is not null ? WalkingRoutePlanner.ValidatePath(head.Id, Position, head.Position, path) : null;
+                inspectionSampleAt = now;
+                return;
+            }
+        }
         if (inspectionTask is { IsCompleted: true } finished)
         {
             inspectionTask = null;
@@ -393,6 +429,12 @@ public sealed partial class Plugin : IDalamudPlugin
             catch { inspectionPath = null; }
         }
         if (navigationStatus != "地形導航已就緒") { StopGroundInspection(); return; }
+        if (GroundNavigation.PatrolPaths.TryGet(Position, head.Position, out var cached))
+        {
+            inspectionPath = WalkingRoutePlanner.ValidatePath(head.Id, Position, head.Position, cached);
+            inspectionSampleAt = now;
+            return;
+        }
         if (inspectionTask is null && now - inspectionQueriedAt >= 1000)
         {
             inspectionCancellation = new CancellationTokenSource();
@@ -400,15 +442,18 @@ public sealed partial class Plugin : IDalamudPlugin
             var from = Position;
             inspectionQueriedAt = now;
             inspectionTask = Task.Run(async () => WalkingRoutePlanner.ValidatePath(head.Id, from, head.Position,
-                await GroundNavigation.FindPath(from, head.Position, token).ConfigureAwait(false)), token);
+                await GroundNavigation.FindPatrolPath(from, head.Position, token).ConfigureAwait(false)), token);
         }
     }
 
     private string? GroundInspectionBlock(long now)
     {
         var head = Remaining.FirstOrDefault();
-        if (!Config.AutoAdvanceChests || head is null || !CofferKinds.IsCoffer(head.Kind) || !RouteAutomation.IsNear(head, Position, Config.EmptyCheckRadius)) return null;
+        if (!(Config.AutoAdvanceChests || autoPatrol.Enabled) || head is null || !CofferKinds.IsCoffer(head.Kind) || !RouteAutomation.IsNear(head, Position, Config.EmptyCheckRadius)) return null;
         if (navigationStatus != "地形導航已就緒") return "地形導航未就緒，暫停空點確認。";
+        if (autoPatrol.Enabled && autoPatrol.Recovering) return "正在恢復卡住路段，暫停空點確認。";
+        if (autoPatrol.Enabled)
+            return PatrolEmptyCheck.BlockReason(Position, head, lastObservations, CurrentLeg, Config.EmptyCheckRadius);
         if (CurrentLeg is not { } path)
             return "正在確認可通行距離；找不到地面路徑時不會自動略過。";
         var distance = path.Length + Vector3.Distance(Position, path.From);
@@ -444,13 +489,19 @@ public sealed partial class Plugin : IDalamudPlugin
     private unsafe List<Observation> ScanObjects()
     {
         var result = new List<Observation>();
+        HashSet<ulong> looted = [];
+        var loot = FFXIVClientStructs.FFXIV.Client.Game.UI.Loot.Instance();
+        if (loot != null)
+            foreach (var item in loot->Items)
+                if (item.ItemId != 0) looted.Add(item.ChestObjectId);
         foreach (var obj in Objects)
         {
             if (!obj.IsValid() || obj.IsDead) continue;
             if (obj.ObjectKind == ObjectKind.EventObj && CofferKinds.EventObject(obj.BaseId) is { } eventKind)
             {
                 // Keep untargetable event coffers as presence evidence; they must not be mistaken for empty pads.
-                result.Add(new Observation(obj.GameObjectId, obj.BaseId, eventKind, obj.Position, Targetable: obj.IsTargetable));
+                result.Add(new Observation(obj.GameObjectId, obj.BaseId, eventKind, obj.Position,
+                    Available: !looted.Contains(obj.GameObjectId), Targetable: obj.IsTargetable));
                 continue;
             }
             if (obj.ObjectKind != ObjectKind.Treasure) continue;
@@ -463,7 +514,7 @@ public sealed partial class Plugin : IDalamudPlugin
             if (catalog.Any(s => s.Territory == Client.TerritoryType && s.Kind == SpotKind.Tower && Vector3.DistanceSquared(s.Position, obj.Position) <= 16))
                 kind = SpotKind.Tower;
             var native = (NativeTreasure*)obj.Address;
-            var spent = (native->Flags & (NativeTreasure.TreasureFlags.Opened | NativeTreasure.TreasureFlags.FadedOut)) != 0 ||
+            var spent = looted.Contains(obj.GameObjectId) || (native->Flags & (NativeTreasure.TreasureFlags.Opened | NativeTreasure.TreasureFlags.FadedOut)) != 0 ||
                 native->State is NativeTreasure.TreasureState.Opened or NativeTreasure.TreasureState.FadingOut or NativeTreasure.TreasureState.FadedOut;
             result.Add(new Observation(obj.GameObjectId, obj.BaseId, kind.Value, obj.Position, !spent,
                 obj.IsTargetable && native->State == NativeTreasure.TreasureState.Unopened,
@@ -532,7 +583,7 @@ public sealed partial class Plugin : IDalamudPlugin
     {
         ReleaseFateNavigation();
         if (!Active) { Message = "請先進入新月島。"; return; }
-        if (Config.UseChartRoute) { StartChartRoute(Config.ChartStartNumber); return; }
+        if (Config.UseChartRoute) { StartChartRoute(PatrolStartNumber); return; }
         routeAutomation.SetPaused(false);
         StartWalkingPlan(Filtered().Where(s => s.Status != SpotStatus.Visited).Select(s => s.Spot).ToArray(), new HashSet<string>(), false);
     }
@@ -550,11 +601,18 @@ public sealed partial class Plugin : IDalamudPlugin
             .Where(s => Session.CanPatrol(s.Spot.Id)).Select(s => s.Spot).ToArray();
         pendingResume = null;
         if (points.Length == 0) { Message = "保留巡查紀錄，目前沒有待續巡的目標。"; return; }
+        if (autoPatrol.Enabled && request.Ordered)
+        {
+            SetLazyPatrolRoute(points);
+            Message = "已接續固定巡查順序；沿用快取，逐段準備地面路徑。";
+            return;
+        }
         StartWalkingPlan(points, request.Priority, request.FlagFirst, true, request.Ordered);
     }
 
     private void StartWalkingPlan(Spot[] points, IReadOnlySet<string> priority, bool flagFirst, bool reconnect = false, bool ordered = false)
     {
+        SuspendAutoPatrol("路線計算中，暫停自動移動。");
         pendingResume = null;
         StopPlanning(); StopGroundInspection();
         routeAutomation.Reset();
@@ -569,7 +627,7 @@ public sealed partial class Plugin : IDalamudPlugin
         routeProgress = $"計算地形步行路線 · 0 / {points.Length} 站";
         Message = "正在依可通行路徑排序；上次路線與巡查紀錄保留至計算完成。";
         Action<WalkingProgress> progress = p => { if (!token.IsCancellationRequested) routeProgress = $"{p.Phase} · {p.Stops} / {p.Total} 站 · 已查詢 {p.Queries} 條路徑"; };
-        routeTask = Task.Run(() => ordered ? WalkingRoutePlanner.PlanOrderedAsync(start, points, GroundNavigation.FindPath, progress, token)
+        routeTask = Task.Run(() => ordered ? WalkingRoutePlanner.PlanOrderedAsync(start, points, GroundNavigation.FindPatrolPath, progress, token)
             : WalkingRoutePlanner.PlanAsync(start, points, priority, GroundNavigation.FindPath, progress, token), token);
     }
 
@@ -597,7 +655,7 @@ public sealed partial class Plugin : IDalamudPlugin
             routeRevision = Session.Revision;
             var flagged = flagAfterPlanning && !EventNavigationActive && !IsOccupied && Remaining.Count > 0 && TryFlag(Remaining[0]);
             Message = request?.Ordered == true
-                ? $"圖表順序已保留 {Remaining.Count} 站，已取得 {result.Legs.Count} 條步行路段。" +
+                ? $"{(CarrotMode ? "蘿蔔路線" : Config.PatrolRoute == PatrolRouteKind.Bocchi ? "BOCCHI 分區順序" : "圖表順序")}已保留 {Remaining.Count} 站，已取得 {result.Legs.Count} 條步行路段。" +
                   (result.Unreachable.Count > 0 ? $" {result.Unreachable.Count} 段待確認，站點仍保留，可手動插旗查看。" : "")
                 : $"步行路線已規劃 {Remaining.Count} 站，約 {Route.Length:F0} m。" +
                   (result.Unreachable.Count > 0 ? $" {result.Unreachable.Count} 點未找到完整路徑，未納入且未記為已巡查。" : "");
@@ -622,7 +680,7 @@ public sealed partial class Plugin : IDalamudPlugin
         activeRequest = null;
     }
 
-    internal void CancelPlanning() { pendingResume = null; StopPlanning(); Message = "已取消地形計算，保留原本路線與巡查紀錄。"; }
+    internal void CancelPlanning() { if (autoPatrol.Enabled) PauseRoute(); pendingResume = null; StopPlanning(); Message = "已取消地形計算，保留原本路線與巡查紀錄。"; }
 
     internal void SaveFilters()
     {
@@ -646,6 +704,7 @@ public sealed partial class Plugin : IDalamudPlugin
 
     internal void Flag(Spot? spot)
     {
+        if (autoPatrol.Enabled && spot?.Id != Remaining.FirstOrDefault()?.Id) PauseRoute();
         ReleaseFateNavigation();
         if (!IsPaused) { pendingResume = null; StopPlanning(); }
         routeAutomation.CancelFlag();
@@ -657,6 +716,7 @@ public sealed partial class Plugin : IDalamudPlugin
         if (!Active || spot is null || spot.Territory != Client.TerritoryType || Client.MapId == 0)
         { Message = "目前沒有可插旗的目標，或不在相同區域。"; return false; }
         if (!Session.CanDisplay(spot.Id, Config.DisplayMode) &&
+            !(CarrotMode && CarrotRoute.Number(spot) is not null) &&
             !((Remaining.Any(s => s.Id == spot.Id) || Config.UseChartRoute && ChestChart.Number(spot) is not null) && Session.CanPatrol(spot.Id)))
         { Message = "目標已不符合目前顯示條件，未更新旗標。"; return false; }
         spot = Session.Get(spot.Id)!.Spot;
@@ -706,9 +766,11 @@ public sealed partial class Plugin : IDalamudPlugin
     internal void Next()
     {
         if (IsPaused) { Message = "巡查已暫停，請先繼續。"; return; }
+        SuspendAutoPatrol("切換巡查站點，重新確認路徑。");
         pendingResume = null;
         StopPlanning();
         if (!Active || Remaining.Count == 0) return;
+        if (CarrotMode) { FinishCarrotPad(Remaining[0], empty: false); carrotGathering.Reset(); return; }
         routeAutomation.Reset();
         Session.Visit(Remaining[0].Id);
         Remaining.RemoveAt(0);
@@ -722,6 +784,7 @@ public sealed partial class Plugin : IDalamudPlugin
         ReleaseFateNavigation();
         if (Config.UseChartRoute)
         {
+            if (CarrotMode) { StartCarrotRoute(CarrotRoute.Number(Remaining.FirstOrDefault()) ?? Config.CarrotStartNumber, lazy: false); return; }
             var first = Remaining.FirstOrDefault(s => Session.CanPatrol(s.Id)) ?? Route.Stops.FirstOrDefault(s => Session.CanPatrol(s.Id));
             StartChartRoute(ChestChart.Number(first) ?? Config.ChartStartNumber);
             return;
@@ -745,6 +808,7 @@ public sealed partial class Plugin : IDalamudPlugin
     {
         if (!Active) { Message = "請先進入新月島。"; return; }
         Session.RestartSurvey();
+        if (CarrotMode) ResetCarrotSession();
         Plan();
     }
 
@@ -767,6 +831,11 @@ public sealed partial class Plugin : IDalamudPlugin
             case "waymark":
             case "waymarks": window.OpenWaymarks(); return;
             case "route": Plan(); break;
+            case "route bocchi": PlanPatrolRoute(PatrolRouteKind.Bocchi); break;
+            case "route chart": PlanPatrolRoute(PatrolRouteKind.Chart); break;
+            case "route carrot": PlanPatrolRoute(PatrolRouteKind.Carrot); break;
+            case "autopatrol": SetAutoPatrol(true); break;
+            case "autopatrol stop": SetAutoPatrol(false); break;
             case "flag": Flag(Remaining.FirstOrDefault()); break;
             case "next": Next(); break;
             case "reset": Restart(); break;
@@ -787,11 +856,17 @@ public sealed partial class Plugin : IDalamudPlugin
         window.DrawWorldHints();
         DrawPotCountdownOverlay();
         DrawPatrolOverlay();
+        DrawPhantomJobOverlay();
     }
 
     public void Dispose()
     {
         disposed = true;
+        CancelPotTimeQuery();
+        potEntryTimeSync.Disable();
+        potTimeHttp.Dispose();
+        try { if (!Framework.IsFrameworkUnloading) Framework.RunOnFrameworkThread(() => autoPatrol.Stop("插件已卸載，停止自動巡查。")).GetAwaiter().GetResult(); }
+        catch (Exception error) { Log.Warning(error, "CrescentCompass could not stop owned navigation during unload"); }
         CancelWaymarks("插件已卸載，停止標點還原。");
         StopPlanning(); StopGroundInspection();
         Framework.Update -= Update;

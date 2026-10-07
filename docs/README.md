@@ -19,6 +19,8 @@
 ## 使用與驗收
 
 - [自動開箱](AUTO_CHESTS.md)
+- [自動巡查寶箱](AUTO_PATROL.md)
+- [25 點蘿蔔巡航與搜尋權重](CARROT_PATROL.md)
 - [幻影職業與巨集](PHANTOM_JOBS.md)
 - [標點預設](WAYMARKS.md)
 - [標點俯視與力之塔場地預覽](WAYMARK_PREVIEW.md)

@@ -19,15 +19,22 @@ internal static class PhantomJobChecks
         bool Change(byte id) { calls++; return true; }
         foreach (var blocked in new[] { ready with { Ready = false }, ready with { Territory = 1 }, ready with { Character = 0 },
             ready with { CurrentJob = null }, ready with { InCombat = true }, ready with { Occupied = true }, ready with { Dead = true } })
+        {
             check(switcher.Request(1, blocked, 0, Change) == blocked.BlockReason && calls == 0, "Phantom switch rejects unavailable game state");
+            check(switcher.Detail == blocked.BlockReason, "Blocked switch remains available in the UI without a chat notification");
+        }
+        var unknown = switcher.Request(byte.MaxValue, ready, 0, Change);
+        check(switcher.Detail == unknown && unknown.Contains("未知"), "Unknown command keeps an inline diagnostic without guessing a job");
         switcher.Request(13, ready, 0, Change); switcher.Request(0, ready, 0, Change);
         check(calls == 0, "Invalid or already selected job makes no native call, including freelancer ID zero");
         var result = switcher.Request(1, ready, 0, Change);
         check(calls == 1 && switcher.Busy && result.Contains("等待遊戲確認"), "A sent request is pending, not successful");
-        switcher.Request(2, ready, 500, Change);
+        var pending = switcher.Request(2, ready, 500, Change);
+        check(switcher.Detail == pending && pending.Contains("等待遊戲回覆"), "Pending request reason remains available to the overlay tooltip");
         check(calls == 1, "Pending request cannot stack another switch");
         check(switcher.Update(ready with { CurrentJob = 1 }, 600)?.Contains("已切換為輔助騎士") == true && !switcher.Busy, "Observed game state confirms requested job");
-        switcher.Request(2, ready with { CurrentJob = 1 }, 700, Change);
+        var throttled = switcher.Request(2, ready with { CurrentJob = 1 }, 700, Change);
+        check(switcher.Detail == throttled && throttled.Contains("過於頻繁"), "Rate-limit feedback is retained in the UI while chat is silent");
         check(calls == 1, "Rapid macros are rate limited even after confirmation");
         switcher.Request(2, ready with { CurrentJob = 1 }, 1000, Change);
         check(calls == 2 && switcher.Busy, "Next deliberate request allowed after throttle");

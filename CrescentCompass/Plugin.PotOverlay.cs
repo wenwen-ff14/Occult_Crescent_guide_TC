@@ -14,8 +14,19 @@ public sealed partial class Plugin
             !Conditions[ConditionFlag.WatchingCutscene] && !Conditions[ConditionFlag.WatchingCutscene78] &&
             !Conditions[ConditionFlag.OccupiedInCutSceneEvent];
         var now = DateTimeOffset.UtcNow;
-        potCountdownOverlay.Draw(PotFates.Snapshot(now), now, visible, Config.LockPotCountdownOverlay,
-            new(Config.PotCountdownOverlayX, Config.PotCountdownOverlayY), SavePotOverlayPosition);
+        var snapshot = PotFates.Snapshot(now);
+        var canFlagNext = Active && snapshot.Next is { } next && next.Territory == Client.TerritoryType &&
+            PotFateLocation(next.Id) is not null;
+        potCountdownOverlay.Draw(snapshot, now, visible,
+            new(Config.PotCountdownOverlayX, Config.PotCountdownOverlayY), SavePotOverlayPosition, canFlagNext, FlagNextPotFateLocation);
+    }
+
+    private void FlagNextPotFateLocation(ushort expectedId)
+    {
+        var snapshot = PotFates.Snapshot(DateTimeOffset.UtcNow);
+        if (!Active || snapshot.ExpectedAt is null || snapshot.Next is not { } next ||
+            next.Id != expectedId || next.Territory != Client.TerritoryType) return;
+        FlagPotFateLocation(next.Id);
     }
 
     internal void SetPotOverlayVisible(bool enabled)
@@ -23,14 +34,6 @@ public sealed partial class Plugin
         Config.ShowPotCountdownOverlay = enabled;
         PluginInterface.SavePluginConfig(Config);
     }
-
-    internal void SetPotOverlayLocked(bool locked)
-    {
-        Config.LockPotCountdownOverlay = locked;
-        PluginInterface.SavePluginConfig(Config);
-    }
-
-    internal void ResetPotOverlayPosition() => SavePotOverlayPosition(new(24, 160));
 
     private void SavePotOverlayPosition(Vector2 position)
     {

@@ -15,7 +15,7 @@ internal static class AutoChestChecks
         Tick(0, enabled: false);
         check(calls.Count == 0, "Auto chest is opt-in: disabled mode never interacts");
         foreach (var blocked in new[] { ready with { Territory = 1 }, ready with { CharacterId = 0 }, ready with { Ready = false },
-            ready with { InCombat = true }, ready with { Occupied = true },
+            ready with { InCombat = true }, ready with { Occupied = true }, ready with { Jumping = true },
             ready with { Mounted = true, InFlight = true }, ready with { Mounted = true, RidingPillion = true },
             ready with { Mounted = true, Occupied = true }, ready with { Mounted = true, InCombat = true },
             ready with { Dead = true }, ready with { Paused = true } })
@@ -103,5 +103,40 @@ internal static class AutoChestChecks
         check(calls.Count == 6, "Leaving the two metre interaction radius immediately stops attempts");
         Tick(6100, player: new(0.2f, 0, 0));
         check(calls.Count == 7, "Returning while moving interacts on the first eligible scan");
+
+        calls.Clear(); opener.Reset();
+        void PatrolTick(long now, ChestInteractionContext? context = null, Observation? observed = null) =>
+            opener.Update(true, context ?? ready, [observed ?? chest], Vector3.Zero, now, Interact,
+                AutoChestOpener.PatrolAttemptIntervalMs, allowCombat: true);
+        PatrolTick(0); PatrolTick(499);
+        check(calls.Count == 1, "Patrol interactions remain throttled between scans");
+        PatrolTick(500);
+        check(calls.Count == 2, "Settled patrol can retry at 500ms without changing the standalone one-second interval");
+        PatrolTick(1000, ready with { Occupied = true });
+        PatrolTick(1500, observed: chest with { Opening = true });
+        check(calls.Count == 2, "Faster patrol retry never interrupts casting or opening");
+        PatrolTick(2000, observed: chest with { Available = false }); PatrolTick(2500);
+        check(calls.Count == 2, "Loot or opened evidence suppresses further patrol interactions even if the object flickers");
+
+        calls.Clear(); opener.Reset();
+        var combat = ready with { InCombat = true };
+        PatrolTick(0, combat); PatrolTick(499, combat); PatrolTick(500, combat);
+        check(calls.Count == 2 && combat.InCombat && combat.BlockReason.Length > 0 && combat.GetBlockReason(allowCombat: true).Length == 0,
+            "Patrol permits combat interactions at the normal 500ms interval without mutating the combat context");
+        foreach (var blocked in new[] { combat with { Occupied = true }, combat with { Paused = true },
+            combat with { Dead = true }, combat with { InFlight = true }, combat with { RidingPillion = true }, combat with { Jumping = true },
+            combat with { Ready = false }, combat with { Territory = 1 }, combat with { CharacterId = 0 } })
+        {
+            PatrolTick(1000, blocked);
+            check(calls.Count == 2, "Combat interaction exception retains all other preflight restrictions");
+        }
+        PatrolTick(1500, combat, chest with { Opening = true });
+        PatrolTick(2000, combat, chest with { Targetable = false });
+        check(calls.Count == 2, "Combat does not override animation or targetability checks");
+        Tick(2500, context: combat);
+        check(calls.Count == 2 && opener.Detail == combat.BlockReason,
+            "Stopping patrol restores the standalone opener's existing combat restriction");
+        PatrolTick(3000, combat, chest with { Available = false }); PatrolTick(3500, combat);
+        check(calls.Count == 2, "Combat never reopens a chest with collected evidence");
     }
 }
